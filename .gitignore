@@ -40,9 +40,12 @@ src-tauri/target/
 src-tauri/binaries/**/*.exe
 src-tauri/binaries/linux/clamscan
 src-tauri/binaries/linux/freshclam
-src-tauri/binaries/linux/lib/
+src-tauri/binaries/linux/lib/*
+!src-tauri/binaries/linux/lib/.gitkeep
 src-tauri/binaries/macos/clamscan
 src-tauri/binaries/macos/freshclam
+src-tauri/binaries/macos/lib/*
+!src-tauri/binaries/macos/lib/.gitkeep
 src-tauri/resources/clamav/*.cvd
 src-tauri/resources/clamav/*.cld
 src-tauri/resources/clamav/*.cvdb

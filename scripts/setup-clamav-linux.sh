@@ -38,9 +38,20 @@ fi
 
 if [ ! -f "$DB_DIR/main.cvd" ]; then
   echo "Downloading virus definitions..."
-  freshclam --datadir="$DB_DIR" --stdout --log="$DB_DIR/freshclam.log" 2>/dev/null \
-    || sudo freshclam --datadir="$DB_DIR" 2>/dev/null \
-    || true
+  FRESHCLAM_CONF="$DB_DIR/freshclam.conf"
+  cat > "$FRESHCLAM_CONF" <<EOF
+DatabaseDirectory $DB_DIR
+DatabaseMirror database.clamav.net
+DNSDatabaseInfo current.cvd.clamav.net
+UpdateLogFile $DB_DIR/freshclam.log
+PIDFile $DB_DIR/freshclam.pid
+EOF
+  "$FRESHCLAM" --config-file="$FRESHCLAM_CONF" --datadir="$DB_DIR" 2>/dev/null || true
+
+  if [ ! -f "$DB_DIR/main.cvd" ] && [ -d /var/lib/clamav ]; then
+    echo "Copying system virus definitions..."
+    cp /var/lib/clamav/*.cvd /var/lib/clamav/*.cld "$DB_DIR/" 2>/dev/null || true
+  fi
 fi
 
 echo "Verifying bundled clamscan..."

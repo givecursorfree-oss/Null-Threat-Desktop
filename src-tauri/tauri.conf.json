@@ -43,7 +43,8 @@
       "binaries/windows/certs/*",
       "binaries/linux/*",
       "binaries/linux/lib/*",
-      "binaries/macos/*"
+      "binaries/macos/*",
+      "binaries/macos/lib/*"
     ]
   }
 }
