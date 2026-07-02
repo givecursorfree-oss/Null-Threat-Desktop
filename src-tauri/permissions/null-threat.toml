@@ -1,0 +1,30 @@
+[[permission]]
+identifier = "null-threat-commands"
+description = "Allow all Null Threat scanner, quarantine, and settings commands."
+commands.allow = [
+  "pick_scan_file",
+  "pick_watched_folder",
+  "scan_file",
+  "get_scan_history",
+  "get_dashboard_stats",
+  "get_verdict_breakdown",
+  "get_realtime_protection",
+  "quarantine_file",
+  "restore_file",
+  "delete_quarantined",
+  "get_quarantine_list",
+  "add_watched_folder",
+  "remove_watched_folder",
+  "toggle_watched_folder",
+  "get_watched_folders",
+  "toggle_realtime_protection",
+  "add_to_whitelist",
+  "remove_from_whitelist",
+  "get_whitelist",
+  "export_history_csv",
+  "check_dependencies",
+  "get_signature_status",
+  "update_signatures",
+  "get_hash_intel_status",
+  "update_hash_intel"
+]

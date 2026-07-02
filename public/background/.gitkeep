@@ -1,0 +1,6 @@
+Place optional exported background assets here for fully offline Unicorn/Spline modes:
+
+- unicorn-project.json  — JSON export from Unicorn Studio (Legend plan)
+- scene.splinecode      — Self-hosted export from Spline
+
+The UnicornStudio runtime SDK lives in ../vendor/unicornStudio.umd.js

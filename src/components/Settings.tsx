@@ -1,0 +1,380 @@
+import { useState, useEffect } from "react";
+import { FolderPlus, Trash2, Download, Eye, EyeOff, AlertCircle, RefreshCw } from "lucide-react";
+import {
+  exportHistoryCsv,
+  addToWhitelist,
+  toggleRealtimeProtection,
+  pickWatchedFolder,
+  fetchDependencies,
+  fetchWhitelist,
+  removeFromWhitelist,
+  pickScanFile,
+  fetchSignatureStatus,
+  updateSignatures,
+  fetchHashIntelStatus,
+  updateHashIntel,
+} from "../lib/api";
+import { useWatcher } from "../hooks/useWatcher";
+import { useScanStore } from "../store/scanStore";
+import { useConsent } from "@/components/onboarding/ConsentProvider";
+import PageHeader from "./PageHeader";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import type { DependencyStatus, HashIntelStatus, SignatureStatus } from "../types";
+
+export default function Settings() {
+  const { watchedFolders, addFolder, removeFolder, toggleFolder } = useWatcher();
+  const { realtimeProtection, setRealtimeProtection } = useScanStore();
+  const { requestFolderWatchConsent } = useConsent();
+  const [whitelist, setWhitelist] = useState<
+    Array<{ id: number; path: string; sha256: string }>
+  >([]);
+  const [deps, setDeps] = useState<DependencyStatus | null>(null);
+  const [signatureStatus, setSignatureStatus] = useState<SignatureStatus | null>(null);
+  const [hashIntelStatus, setHashIntelStatus] = useState<HashIntelStatus | null>(null);
+  const [isUpdatingSignatures, setIsUpdatingSignatures] = useState(false);
+  const [isUpdatingHashIntel, setIsUpdatingHashIntel] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchDependencies()
+      .then(setDeps)
+      .catch(() => {});
+    fetchWhitelist()
+      .then(setWhitelist)
+      .catch(() => {});
+    fetchSignatureStatus()
+      .then(setSignatureStatus)
+      .catch(() => {});
+    fetchHashIntelStatus()
+      .then(setHashIntelStatus)
+      .catch(() => {});
+  }, []);
+
+  const handleAddFolder = async () => {
+    setError(null);
+    const granted = await requestFolderWatchConsent();
+    if (!granted) return;
+
+    try {
+      const selected = await pickWatchedFolder();
+      if (selected) {
+        await addFolder(selected);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const handleAddWhitelist = async () => {
+    setError(null);
+    try {
+      const path = await pickScanFile();
+      if (path) {
+        await addToWhitelist(path, "");
+        const list = await fetchWhitelist();
+        setWhitelist(list);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const handleRemoveWhitelist = async (id: number) => {
+    await removeFromWhitelist(id);
+    const list = await fetchWhitelist();
+    setWhitelist(list);
+  };
+
+  const handleExportHistory = async () => {
+    try {
+      const csv = await exportHistoryCsv();
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `null-threat-history-${Date.now()}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const handleToggleProtection = async () => {
+    const newState = !realtimeProtection;
+    setError(null);
+
+    if (newState) {
+      const granted = await requestFolderWatchConsent();
+      if (!granted) return;
+    }
+
+    try {
+      await toggleRealtimeProtection(newState);
+      setRealtimeProtection(newState);
+    } catch (err) {
+      setRealtimeProtection(!newState);
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const handleUpdateSignatures = async () => {
+    setError(null);
+    setIsUpdatingSignatures(true);
+    try {
+      const status = await updateSignatures(true);
+      setSignatureStatus(status);
+      const refreshed = await fetchDependencies();
+      setDeps(refreshed);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsUpdatingSignatures(false);
+    }
+  };
+
+  const handleUpdateHashIntel = async () => {
+    setError(null);
+    setIsUpdatingHashIntel(true);
+    try {
+      const status = await updateHashIntel(true);
+      setHashIntelStatus(status);
+      const refreshed = await fetchDependencies();
+      setDeps(refreshed);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsUpdatingHashIntel(false);
+    }
+  };
+
+  const formatSignatureDate = (iso: string | null) => {
+    if (!iso) return "Never";
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return "Unknown";
+    return date.toLocaleString();
+  };
+
+  return (
+    <div className="mx-auto max-w-2xl space-y-6">
+      <PageHeader
+        title="Settings"
+        description="Protection, watched folders, and engine dependencies."
+      />
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {deps && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle>Engine Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-1 text-xs text-muted-foreground">
+              <li>ClamAV: {deps.clamavAvailable ? "available" : "not found (optional)"}</li>
+              <li>ffprobe: {deps.ffprobeAvailable ? "installed" : "not found (optional)"}</li>
+              <li>YARA rules loaded: {deps.yaraRulesFound}</li>
+              <li>
+                MalwareBazaar hashes:{" "}
+                {deps.malwarebazaarHashCount > 0
+                  ? deps.malwarebazaarHashCount.toLocaleString()
+                  : "none — update when online"}
+              </li>
+              <li>Database: {deps.dbConnected ? "connected" : "error"}</li>
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardContent className="flex items-center justify-between gap-4 p-4">
+          <div>
+            <h3 className="font-display text-sm font-semibold text-foreground">
+              MalwareBazaar Hash Intelligence
+            </h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Null Threat works fully offline. When you are online, refresh known-malware SHA256
+              hashes daily for better detection. Internet is only needed for this step.
+            </p>
+            {hashIntelStatus && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                {hashIntelStatus.hashCount > 0
+                  ? `${hashIntelStatus.hashCount.toLocaleString()} hashes loaded`
+                  : "No hashes loaded yet"}
+                {" · "}
+                Last updated: {formatSignatureDate(hashIntelStatus.lastUpdated)}
+                {hashIntelStatus.updateDue ? " · refresh recommended" : ""}
+              </p>
+            )}
+          </div>
+          <Button
+            type="button"
+            onClick={handleUpdateHashIntel}
+            variant="outline"
+            size="sm"
+            disabled={isUpdatingHashIntel || hashIntelStatus?.updating}
+          >
+            <RefreshCw className={isUpdatingHashIntel ? "h-3 w-3 animate-spin" : "h-3 w-3"} />
+            {isUpdatingHashIntel ? "Updating..." : "Update hashes"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="flex items-center justify-between gap-4 p-4">
+          <div>
+            <h3 className="font-display text-sm font-semibold text-foreground">
+              ClamAV Signatures (optional)
+            </h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Optional virus definitions for the ClamAV engine. Update manually when online — not
+              required for offline scanning with bundled definitions.
+            </p>
+            {signatureStatus && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Last updated: {formatSignatureDate(signatureStatus.lastUpdated)}
+                {signatureStatus.updateDue ? " · refresh due" : " · up to date"}
+              </p>
+            )}
+          </div>
+          <Button
+            type="button"
+            onClick={handleUpdateSignatures}
+            variant="outline"
+            size="sm"
+            disabled={isUpdatingSignatures || signatureStatus?.updating}
+          >
+            <RefreshCw className={isUpdatingSignatures ? "h-3 w-3 animate-spin" : "h-3 w-3"} />
+            {isUpdatingSignatures ? "Updating..." : "Update now"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="flex items-center justify-between p-4">
+          <div>
+            <Label htmlFor="realtime-protection" className="font-display text-sm font-semibold">
+              Real-time Protection
+            </Label>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Scan new files in watched folders. You will be asked before monitoring starts.
+            </p>
+          </div>
+          <Switch
+            id="realtime-protection"
+            checked={realtimeProtection}
+            onCheckedChange={handleToggleProtection}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle>Watched Folders</CardTitle>
+            <Button type="button" onClick={handleAddFolder} variant="outline" size="sm">
+              <FolderPlus className="h-3 w-3" />
+              Add Folder
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {watchedFolders.length === 0 ? (
+            <p className="py-2 text-xs text-muted-foreground">
+              No folders watched. Add Downloads or Desktop to test real-time scanning.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {watchedFolders.map((folder) => (
+                <li
+                  key={folder.id}
+                  className="flex items-center gap-3 rounded-md bg-secondary px-3 py-2"
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleFolder(folder.id, !folder.enabled)}
+                    className={folder.enabled ? "text-foreground" : "text-muted-foreground"}
+                    title={folder.enabled ? "Disable" : "Enable"}
+                    aria-label={folder.enabled ? "Disable folder" : "Enable folder"}
+                  >
+                    {folder.enabled ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                  </button>
+                  <span className="flex-1 truncate text-sm text-foreground">{folder.path}</span>
+                  <Button
+                    type="button"
+                    onClick={() => removeFolder(folder.id)}
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                    aria-label="Remove folder"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle>Whitelist</CardTitle>
+            <Button type="button" onClick={handleAddWhitelist} variant="outline" size="sm">
+              Add File
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {whitelist.length === 0 ? (
+            <p className="py-2 text-xs text-muted-foreground">No whitelisted files</p>
+          ) : (
+            <ul className="space-y-1">
+              {whitelist.map((entry) => (
+                <li
+                  key={entry.id}
+                  className="flex items-center gap-2 rounded-md bg-secondary px-3 py-2"
+                >
+                  <span className="flex-1 truncate text-xs text-foreground">{entry.path}</span>
+                  <Button
+                    type="button"
+                    onClick={() => handleRemoveWhitelist(entry.id)}
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                    aria-label="Remove from whitelist"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="flex items-center justify-between p-4">
+          <div>
+            <h3 className="font-display text-sm font-semibold text-foreground">Export Scan History</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">Download all scan records as CSV</p>
+          </div>
+          <Button type="button" onClick={handleExportHistory} variant="outline" size="sm">
+            <Download className="h-3 w-3" />
+            Export
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

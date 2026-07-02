@@ -1,0 +1,127 @@
+name: Build Null Threat
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  CLAMAV_VERSION: "1.5.2"
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Linux build + ClamAV dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
+            patchelf build-essential curl wget file libssl-dev \
+            clamav clamav-freshclam patchelf
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Bundle ClamAV for Linux
+        run: |
+          chmod +x scripts/setup-clamav-linux.sh
+          ./scripts/setup-clamav-linux.sh
+          ./src-tauri/binaries/linux/clamscan --version
+          echo "test" > /tmp/null-threat-clam-test.txt
+          ./src-tauri/binaries/linux/clamscan --database=src-tauri/resources/clamav /tmp/null-threat-clam-test.txt
+          ls -la src-tauri/resources/clamav/
+
+      - name: Build Linux app
+        run: |
+          npm ci
+          npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: null-threat-linux
+          if-no-files-found: error
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/appimage/*.AppImage
+
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install ClamAV via Homebrew
+        run: brew install clamav
+
+      - name: Bundle ClamAV for macOS
+        run: |
+          chmod +x scripts/setup-clamav-macos.sh
+          ./scripts/setup-clamav-macos.sh
+          ./src-tauri/binaries/macos/clamscan --version
+          echo "test" > /tmp/null-threat-clam-test.txt
+          ./src-tauri/binaries/macos/clamscan --database=src-tauri/resources/clamav /tmp/null-threat-clam-test.txt
+          ls -la src-tauri/resources/clamav/
+
+      - name: Build macOS app
+        run: |
+          npm ci
+          npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: null-threat-macos
+          if-no-files-found: error
+          path: |
+            src-tauri/target/release/bundle/dmg/*.dmg
+            src-tauri/target/release/bundle/macos/*.app
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Bundle ClamAV for Windows
+        shell: pwsh
+        run: |
+          if (Test-Path src-tauri/binaries/windows/clamscan.exe) {
+            Write-Host "Using existing bundled ClamAV binaries"
+          } else {
+            .\scripts\setup-clamav-ci.ps1
+          }
+          .\src-tauri\binaries\windows\clamscan.exe --version
+          Get-ChildItem src-tauri\resources\clamav\
+
+      - name: Build Windows app
+        run: |
+          npm ci
+          npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: null-threat-windows
+          if-no-files-found: error
+          path: |
+            src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/bundle/nsis/*.exe

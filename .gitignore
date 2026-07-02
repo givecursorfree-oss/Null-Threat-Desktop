@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+target/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Database files (rebuilt from bulk exports)
+databases/*.db
+databases/*.db-journal
+databases/*.db-wal
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Tauri debug builds
+src-tauri/target/
+
+# Bundled ClamAV artifacts (populate via scripts/setup-clamav*.sh|ps1)
+src-tauri/binaries/**/*.exe
+src-tauri/binaries/linux/clamscan
+src-tauri/binaries/linux/freshclam
+src-tauri/binaries/linux/lib/
+src-tauri/binaries/macos/clamscan
+src-tauri/binaries/macos/freshclam
+src-tauri/resources/clamav/*.cvd
+src-tauri/resources/clamav/*.cld
+src-tauri/resources/clamav/*.cvdb
+
+# TypeScript cache
+*.tsbuildinfo

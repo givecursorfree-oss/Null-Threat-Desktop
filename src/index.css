@@ -1,0 +1,290 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #050505;
+    --foreground: #ffffff;
+    --card: #18181b;
+    --card-foreground: #ffffff;
+    --popover: #18181b;
+    --popover-foreground: #ffffff;
+    --primary: #ffffff;
+    --primary-foreground: #050505;
+    --secondary: #27272a;
+    --secondary-foreground: #ffffff;
+    --muted: #27272a;
+    --muted-foreground: #a1a1aa;
+    --accent: #27272a;
+    --accent-foreground: #ffffff;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: #27272a;
+    --input: #27272a;
+    --ring: #a1a1aa;
+    --radius: 8px;
+  }
+
+  * {
+    @apply border-border;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) var(--background);
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100vh;
+    color-scheme: dark;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  select,
+  .verdict-filter-select {
+    color-scheme: dark;
+  }
+
+  select option {
+    background-color: #18181b;
+    color: #ffffff;
+  }
+
+  #root {
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  ::selection {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: var(--foreground);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  .app-background-layer {
+    contain: strict;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  .glass-wave-bg {
+    background: #050505;
+  }
+
+  .glass-wave-bg__base {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 120% 80% at 50% 110%, rgba(34, 211, 238, 0.12), transparent 55%),
+      radial-gradient(ellipse 90% 60% at 80% 0%, rgba(255, 255, 255, 0.05), transparent 50%),
+      #050505;
+  }
+
+  .glass-wave-bg__wave {
+    position: absolute;
+    left: -20%;
+    width: 140%;
+    border-radius: 50%;
+    opacity: 0.9;
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+  }
+
+  .glass-wave-bg__wave--1 {
+    top: 8%;
+    height: 42%;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.14) 0%,
+      rgba(255, 255, 255, 0.04) 42%,
+      transparent 72%
+    );
+    animation: glass-wave-drift-1 32s cubic-bezier(0.45, 0.05, 0.25, 1) infinite alternate;
+  }
+
+  .glass-wave-bg__wave--2 {
+    top: 34%;
+    height: 38%;
+    background: linear-gradient(
+      180deg,
+      rgba(34, 211, 238, 0.1) 0%,
+      rgba(255, 255, 255, 0.05) 38%,
+      transparent 70%
+    );
+    animation: glass-wave-drift-2 38s cubic-bezier(0.45, 0.05, 0.25, 1) infinite alternate;
+  }
+
+  .glass-wave-bg__wave--3 {
+    top: 58%;
+    height: 36%;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(148, 163, 184, 0.04) 45%,
+      transparent 75%
+    );
+    animation: glass-wave-drift-3 44s cubic-bezier(0.45, 0.05, 0.25, 1) infinite alternate;
+  }
+
+  .glass-wave-bg__sheen {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      115deg,
+      transparent 40%,
+      rgba(255, 255, 255, 0.03) 50%,
+      transparent 60%
+    );
+    animation: glass-wave-sheen 20s ease-in-out infinite;
+  }
+
+  .glass-wave-bg__grid {
+    position: absolute;
+    inset: 0;
+    opacity: 0.22;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 85% 65% at 50% 35%, black 15%, transparent 78%);
+  }
+
+  .offline-mesh-bg {
+    background: #050505;
+  }
+
+  .offline-mesh-bg__orb {
+    position: absolute;
+    border-radius: 9999px;
+    opacity: 0.55;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+  }
+
+  .offline-mesh-bg__orb--1 {
+    top: -20%;
+    left: -10%;
+    width: 55vw;
+    height: 55vw;
+    background: radial-gradient(circle, rgba(34, 211, 238, 0.35) 0%, transparent 68%);
+    animation: mesh-drift-1 18s ease-in-out infinite alternate;
+  }
+
+  .offline-mesh-bg__orb--2 {
+    top: 30%;
+    right: -15%;
+    width: 50vw;
+    height: 50vw;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.28) 0%, transparent 68%);
+    animation: mesh-drift-2 22s ease-in-out infinite alternate;
+  }
+
+  .offline-mesh-bg__orb--3 {
+    bottom: -25%;
+    left: 25%;
+    width: 60vw;
+    height: 45vw;
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.2) 0%, transparent 68%);
+    animation: mesh-drift-3 26s ease-in-out infinite alternate;
+  }
+
+  .offline-mesh-bg__grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 20%, transparent 75%);
+    opacity: 0.35;
+  }
+}
+
+@keyframes glass-wave-drift-1 {
+  from {
+    transform: translate3d(-2%, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(3%, 2%, 0) scale(1.04);
+  }
+}
+
+@keyframes glass-wave-drift-2 {
+  from {
+    transform: translate3d(2%, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(-4%, -1%, 0) scale(1.05);
+  }
+}
+
+@keyframes glass-wave-drift-3 {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(2%, -2%, 0) scale(1.03);
+  }
+}
+
+@keyframes glass-wave-sheen {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translate3d(-4%, 0, 0);
+  }
+  50% {
+    opacity: 0.65;
+    transform: translate3d(4%, 0, 0);
+  }
+}
+
+@keyframes mesh-drift-1 {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(8vw, 6vh, 0) scale(1.08);
+  }
+}
+
+@keyframes mesh-drift-2 {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(-10vw, 8vh, 0) scale(1.12);
+  }
+}
+
+@keyframes mesh-drift-3 {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(6vw, -6vh, 0) scale(1.05);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-wave-bg__wave,
+  .glass-wave-bg__sheen,
+  .offline-mesh-bg__orb {
+    animation: none;
+  }
+}

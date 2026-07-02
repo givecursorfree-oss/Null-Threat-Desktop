@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Null Threat — Local Desktop Security Scanner</title>
+  <meta name="description" content="Four detection engines. Zero cloud uploads. Free and open source under GPL v3." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          },
+          animation: {
+            'spin-slow': 'spin 8s linear infinite',
+            'dash': 'dash 2s linear infinite',
+            'ping-slow': 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite',
+          },
+          keyframes: {
+            dash: {
+              '0%': { strokeDashoffset: '200' },
+              '100%': { strokeDashoffset: '-200' },
+            },
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background-color: #030304;
+      font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #0a0a0a; }
+    ::-webkit-scrollbar-thumb { background: #262626; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #404040; }
+
+    .grid-bg {
+      background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 50px 50px;
+    }
+
+    .radial-glow {
+      background: radial-gradient(circle at center, rgba(56, 189, 248, 0.08) 0%, rgba(0, 0, 0, 0) 60%);
+    }
+
+    .radial-glow-emerald {
+      background: radial-gradient(circle at center, rgba(52, 211, 153, 0.12) 0%, rgba(0, 0, 0, 0) 60%);
+    }
+
+    /* Aura Background Component */
+    .aura-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 100vh;
+      z-index: 10;
+      pointer-events: none;
+      -webkit-mask-image: linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
+      mask-image: linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
+    }
+
+    .aura-bg canvas,
+    .aura-bg [data-us-project] {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes ping {
+      75%, 100% {
+        transform: scale(2);
+        opacity: 0;
+      }
+    }
+
+    .animate-ping {
+      animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+
+    .attack-path {
+      stroke-dasharray: 200;
+      animation: dash 2s linear infinite;
+    }
+
+    @keyframes dash {
+      0% { stroke-dashoffset: 200; }
+      100% { stroke-dashoffset: -200; }
+    }
+
+    .radar-sweep {
+      background: conic-gradient(from 0deg, transparent 0deg, rgba(52, 211, 153, 0.15) 30deg, transparent 60deg);
+      -webkit-mask-image: radial-gradient(circle, black 20%, transparent 70%);
+      mask-image: radial-gradient(circle, black 20%, transparent 70%);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .animate-ping, .attack-path, .animate-spin-slow, .radar-sweep {
+        animation: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="text-neutral-400 font-sans selection:bg-indigo-500/30 selection:text-indigo-200 antialiased">
+
+  <!-- BACKGROUND LAYER (z-10) -->
+  <div class="aura-bg" id="aura-container">
+    <div data-us-project="EET25BiXxR2StNXZvAzF" style="width:100%;height:100%;"></div>
+  </div>
+
+  <!-- NAV LAYER (z-50) -->
+  <nav class="fixed top-0 left-0 right-0 z-50 h-16 border-b border-white/5 bg-[#030304]/80 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
+      <a href="#" class="flex items-center gap-2.5">
+        <div class="w-5 h-5 bg-gradient-to-br from-neutral-300 via-neutral-100 to-amber-500"></div>
+        <span class="font-semibold tracking-tight text-white text-sm">NULL THREAT</span>
+      </a>
+      <div class="hidden md:flex items-center gap-8">
+        <a href="#platform" class="text-xs font-medium text-neutral-400 hover:text-white transition-colors">Platform</a>
+        <a href="#engines" class="text-xs font-medium text-neutral-400 hover:text-white transition-colors">Engines</a>
+        <a href="#features" class="text-xs font-medium text-neutral-400 hover:text-white transition-colors">Features</a>
+        <a href="#docs" class="text-xs font-medium text-neutral-400 hover:text-white transition-colors">Docs</a>
+      </div>
+      <div class="flex items-center gap-4">
+        <a href="https://github.com" class="text-xs font-medium text-neutral-400 hover:text-white transition-colors hidden sm:block">GitHub</a>
+        <a href="#download" class="bg-white text-black text-xs font-medium px-4 py-2 rounded-sm hover:bg-neutral-200 transition-colors">Download</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="relative z-20">
+
+    <!-- SECTION 2 — HERO & THREAT MAP -->
+    <section class="relative pt-32 pb-20 overflow-hidden">
+      <div class="absolute inset-0 grid-bg pointer-events-none"></div>
+      <div class="absolute inset-0 radial-glow pointer-events-none"></div>
+
+      <div class="max-w-7xl mx-auto px-6 relative">
+        <!-- Hero Text -->
+        <div class="text-center mb-16">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 text-xs text-neutral-300 mb-8">
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+            </span>
+            v1.0 Open Source
+          </div>
+
+          <h1 class="text-5xl md:text-7xl font-semibold tracking-tight leading-[1.1] mb-6">
+            <span class="text-white font-semibold">Scan everything.</span><br />
+            <span class="text-neutral-500 font-semibold">Trust nothing.</span>
+          </h1>
+
+          <p class="text-lg text-neutral-400 max-w-2xl mx-auto mb-8">
+            Four local detection engines analyze every file on your machine — no cloud uploads, no telemetry, no subscriptions. Free forever under GPL v3.
+          </p>
+
+          <div class="flex flex-wrap items-center justify-center gap-4">
+            <a href="#download" class="bg-white text-black text-sm font-medium px-6 py-2.5 rounded-sm hover:bg-neutral-200 transition-colors">
+              Download Free
+            </a>
+            <a href="https://github.com" class="border border-white/10 text-white text-sm font-medium px-6 py-2.5 rounded-sm hover:bg-white/5 transition-colors">
+              View on GitHub
+            </a>
+          </div>
+        </div>
+
+        <!-- Abstract Dashboard Visual -->
+        <div class="border border-white/10 bg-[#0a0a0a] rounded-lg overflow-hidden relative min-h-[420px]">
+          <!-- Radar Effect -->
+          <div class="absolute inset-0 flex items-center justify-center overflow-hidden">
+            <div class="w-[150%] h-[150%] animate-spin-slow radar-sweep absolute"></div>
+            <div class="absolute inset-0 radial-glow-emerald opacity-50"></div>
+          </div>
+
+          <!-- SVG Attack Paths -->
+          <svg class="absolute inset-0 w-full h-full" viewBox="0 0 1000 400" preserveAspectRatio="xMidYMid slice" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Animated Attack Path -->
+            <path
+              d="M 800 175 Q 500 -50 200 150"
+              stroke="rgba(52, 211, 153, 0.6)"
+              stroke-width="2"
+              fill="none"
+              class="attack-path"
+            />
+            <!-- Passive Connections -->
+            <path
+              d="M 500 125 Q 350 300 280 325"
+              stroke="rgba(255, 255, 255, 0.15)"
+              stroke-width="1.5"
+              stroke-dasharray="4 4"
+              fill="none"
+            />
+            <path
+              d="M 200 150 Q 350 135 500 125"
+              stroke="rgba(255, 255, 255, 0.15)"
+              stroke-width="1.5"
+              stroke-dasharray="4 4"
+              fill="none"
+            />
+          </svg>
+
+          <!-- Threat Map Nodes -->
+          <div class="absolute top-[28%] left-[72%] flex flex-col items-center gap-1">
+            <div class="relative">
+              <span class="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-400"></span>
+            </div>
+            <span class="text-[10px] font-mono text-emerald-400/80 uppercase tracking-wider">Hash Match</span>
+          </div>
+
+          <div class="absolute top-[55%] left-[25%] flex flex-col items-center gap-1">
+            <div class="relative">
+              <span class="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-amber-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-3 w-3 bg-amber-400"></span>
+            </div>
+            <span class="text-[10px] font-mono text-amber-400/80 uppercase tracking-wider">YARA Hit</span>
+          </div>
+
+          <div class="absolute top-[38%] left-[48%] flex flex-col items-center gap-1">
+            <div class="relative">
+              <span class="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-red-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-3 w-3 bg-red-400"></span>
+            </div>
+            <span class="text-[10px] font-mono text-red-400/80 uppercase tracking-wider">Entropy High</span>
+          </div>
+
+          <div class="absolute top-[68%] left-[62%] flex flex-col items-center gap-1">
+            <div class="relative">
+              <span class="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-400"></span>
+            </div>
+            <span class="text-[10px] font-mono text-emerald-400/80 uppercase tracking-wider">Clean</span>
+          </div>
+
+          <!-- Console UI Overlay -->
+          <div class="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-sm border-t border-white/5 p-4 font-mono text-xs">
+            <div class="text-emerald-400 opacity-100 mb-1">[BLOCKED] SHA-256 match — MalwareBazaar #MB-482910</div>
+            <div class="text-amber-400 opacity-60 mb-1">[WARN] Shannon entropy 7.8/8.0 — packed executable suspected</div>
+            <div class="text-neutral-400 opacity-40">[INFO] ClamAV engine initialized — 500,000+ signatures loaded</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3 — TRUST BAR -->
+    <section class="py-12 border-y border-white/5 relative z-20">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="flex flex-wrap items-center justify-center gap-4">
+          <div class="flex items-center gap-2 px-4 py-2 rounded border border-white/10 bg-white/[0.02] text-sm text-neutral-400 hover:border-white/20 transition-colors">
+            <iconify-icon icon="lucide:shield-check" width="16"></iconify-icon>
+            GPL v3 Licensed
+          </div>
+          <div class="flex items-center gap-2 px-4 py-2 rounded border border-white/10 bg-white/[0.02] text-sm text-neutral-400 hover:border-white/20 transition-colors">
+            <iconify-icon icon="lucide:database" width="16"></iconify-icon>
+            500K+ Signatures
+          </div>
+          <div class="flex items-center gap-2 px-4 py-2 rounded border border-white/10 bg-white/[0.02] text-sm text-neutral-400 hover:border-white/20 transition-colors">
+            <iconify-icon icon="lucide:lock" width="16"></iconify-icon>
+            AES-256 Quarantine
+          </div>
+          <div class="flex items-center gap-2 px-4 py-2 rounded border border-white/10 bg-white/[0.02] text-sm text-neutral-400 hover:border-white/20 transition-colors">
+            <iconify-icon icon="lucide:wifi-off" width="16"></iconify-icon>
+            100% Offline
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3 — VALUE PROP (3-column) -->
+    <section id="platform" class="py-24 relative z-20">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="text-center mb-16">
+          <h2 class="text-3xl md:text-4xl font-semibold text-white mb-4">Built for privacy-first security</h2>
+          <p class="text-neutral-400 max-w-xl mx-auto">Every scan runs on your hardware. Your files never leave your machine.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div class="group">
+            <div class="w-10 h-10 rounded border border-white/10 flex items-center justify-center group-hover:border-emerald-500/50 transition-colors">
+              <iconify-icon icon="lucide:shield-check" width="20" class="text-neutral-400 group-hover:text-emerald-400 transition-colors"></iconify-icon>
+            </div>
+            <p class="text-xs text-neutral-500 font-mono mt-4">01</p>
+            <h3 class="text-lg font-semibold text-white mt-2">Drop a file</h3>
+            <p class="text-sm text-neutral-400 mt-2">Drag any file onto Null Threat or add a watched folder. No account, no upload queue.</p>
+          </div>
+          <div class="group">
+            <div class="w-10 h-10 rounded border border-white/10 flex items-center justify-center group-hover:border-emerald-500/50 transition-colors">
+              <iconify-icon icon="lucide:eye" width="20" class="text-neutral-400 group-hover:text-emerald-400 transition-colors"></iconify-icon>
+            </div>
+            <p class="text-xs text-neutral-500 font-mono mt-4">02</p>
+            <h3 class="text-lg font-semibold text-white mt-2">Four engines analyze</h3>
+            <p class="text-sm text-neutral-400 mt-2">Hash lookup, ClamAV, YARA rules, and deep structural analysis run in parallel locally.</p>
+          </div>
+          <div class="group">
+            <div class="w-10 h-10 rounded border border-white/10 flex items-center justify-center group-hover:border-emerald-500/50 transition-colors">
+              <iconify-icon icon="lucide:lock" width="20" class="text-neutral-400 group-hover:text-emerald-400 transition-colors"></iconify-icon>
+            </div>
+            <p class="text-xs text-neutral-500 font-mono mt-4">03</p>
+            <h3 class="text-lg font-semibold text-white mt-2">Act on the verdict</h3>
+            <p class="text-sm text-neutral-400 mt-2">Review the 0–100 risk score, quarantine threats to an encrypted vault, or export forensic reports.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4 — PROBLEM VS SOLUTION -->
+    <section class="py-24 relative z-20">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <!-- Traditional Security -->
+          <div class="p-8 rounded-lg border border-white/10 bg-white/[0.02]">
+            <div class="flex items-center gap-3 mb-6">
+              <iconify-icon icon="lucide:x-circle" width="24" class="text-purple-400/80"></iconify-icon>
+              <h3 class="text-xl font-semibold text-white">Traditional Security</h3>
+            </div>
+            <ul class="space-y-4">
+              <li class="flex items-start gap-3 text-sm text-neutral-400">
+                <iconify-icon icon="lucide:x" width="16" class="text-purple-400/80 mt-0.5 shrink-0"></iconify-icon>
+                Uploads files to cloud servers for analysis
+              </li>
+              <li class="flex items-start gap-3 text-sm text-neutral-400">
+                <iconify-icon icon="lucide:x" width="16" class="text-purple-400/80 mt-0.5 shrink-0"></iconify-icon>
+                Closed-source engines you cannot audit
+              </li>
+              <li class="flex items-start gap-3 text-sm text-neutral-400">
+                <iconify-icon icon="lucide:x" width="16" class="text-purple-400/80 mt-0.5 shrink-0"></iconify-icon>
+                Subscription fees and telemetry tracking
+              </li>
+              <li class="flex items-start gap-3 text-sm text-neutral-400">
+                <iconify-icon icon="lucide:x" width="16" class="text-purple-400/80 mt-0.5 shrink-0"></iconify-icon>
+                Requires internet for every scan
+              </li>
+            </ul>
+          </div>
+
+          <!-- The Null Threat Way -->
+          <div class="p-8 rounded-lg border border-emerald-500/20 bg-white/[0.02] relative overflow-hidden">
+            <div class="absolute -top-20 -right-20 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px] pointer-events-none"></div>
+            <div class="flex items-center gap-3 mb-6 relative">
+              <iconify-icon icon="lucide:check-circle-2" width="24" class="text-emerald-400"></iconify-icon>
+              <h3 class="text-xl font-semibold text-white">The Null Threat Way</h3>
+            </div>
+            <ul class="space-y-4 relative">
+              <li class="flex items-start gap-3 text-sm text-neutral-400">
+                <iconify-icon icon="lucide:check" width="16" class="text-emerald-400 mt-0.5 shrink-0"></iconify-icon>
+                100% local — files never leave your machine
+              </li>
+              <li class="flex items-start gap-3 text-sm text-neutral-400">
+                <iconify-icon icon="lucide:check" width="16" class="text-emerald-400 mt-0.5 shrink-0"></iconify-icon>
+                Open source under GPL v3 — audit every line
+              </li>
+              <li class="flex items-start gap-3 text-sm text-neutral-400">
+                <iconify-icon icon="lucide:check" width="16" class="text-emerald-400 mt-0.5 shrink-0"></iconify-icon>
+                Free forever — no subscriptions or accounts
+              </li>
+              <li class="flex items-start gap-3 text-sm text-neutral-400">
+                <iconify-icon icon="lucide:check" width="16" class="text-emerald-400 mt-0.5 shrink-0"></iconify-icon>
+                Air-gapped ready with manual signature import
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5 — PRODUCT UI MOCKUP -->
+    <section id="engines" class="py-24 relative z-20">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <!-- Vertical Stepper -->
+          <div>
+            <h2 class="text-3xl md:text-4xl font-semibold text-white mb-12">Four engines. One local verdict.</h2>
+            <div class="space-y-0">
+              <div class="flex gap-4">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 rounded border border-emerald-500/50 flex items-center justify-center text-xs font-mono text-emerald-400">01</div>
+                  <div class="w-px h-6 bg-white/10"></div>
+                </div>
+                <div class="pb-6">
+                  <h4 class="text-base font-semibold text-white">SHA-256 Hash Lookup</h4>
+                  <p class="text-sm text-neutral-400 mt-1">500,000+ MalwareBazaar and NSRL signatures in local SQLite.</p>
+                </div>
+              </div>
+              <div class="flex gap-4">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 rounded border border-white/10 flex items-center justify-center text-xs font-mono text-neutral-400">02</div>
+                  <div class="w-px h-6 bg-white/10"></div>
+                </div>
+                <div class="pb-6">
+                  <h4 class="text-base font-semibold text-white">ClamAV Antivirus</h4>
+                  <p class="text-sm text-neutral-400 mt-1">Industry-standard signatures via local clamscan binary.</p>
+                </div>
+              </div>
+              <div class="flex gap-4">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 rounded border border-white/10 flex items-center justify-center text-xs font-mono text-neutral-400">03</div>
+                  <div class="w-px h-6 bg-white/10"></div>
+                </div>
+                <div class="pb-6">
+                  <h4 class="text-base font-semibold text-white">YARA Rule Matching</h4>
+                  <p class="text-sm text-neutral-400 mt-1">Polyglot files, packed executables, suspicious metadata.</p>
+                </div>
+              </div>
+              <div class="flex gap-4">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 rounded border border-white/10 flex items-center justify-center text-xs font-mono text-neutral-400">04</div>
+                </div>
+                <div>
+                  <h4 class="text-base font-semibold text-white">Deep File Analysis</h4>
+                  <p class="text-sm text-neutral-400 mt-1">Magic bytes, Shannon entropy, ffprobe container inspection.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Scan Result Card -->
+          <div class="border border-white/10 bg-[#0a0a0a] rounded-lg p-6">
+            <div class="flex items-center justify-between mb-6">
+              <div>
+                <p class="text-xs font-mono text-neutral-500 uppercase tracking-wider">Scan Result</p>
+                <h4 class="text-base font-semibold text-white mt-1">invoice_Q4.exe</h4>
+              </div>
+              <span class="px-2 py-1 rounded text-xs font-medium bg-orange-500/15 text-orange-400 border border-orange-500/30">HIGH RISK — 67</span>
+            </div>
+
+            <!-- Mini Bar Graph -->
+            <div class="flex items-end gap-3 h-24 mb-6">
+              <div class="flex-1 flex flex-col items-center gap-2">
+                <div class="w-full bg-white/20 rounded-sm" style="height: 60%"></div>
+                <span class="text-[10px] text-neutral-500 font-mono">Hash</span>
+              </div>
+              <div class="flex-1 flex flex-col items-center gap-2">
+                <div class="w-full bg-white/20 rounded-sm" style="height: 45%"></div>
+                <span class="text-[10px] text-neutral-500 font-mono">ClamAV</span>
+              </div>
+              <div class="flex-1 flex flex-col items-center gap-2">
+                <div class="w-full bg-white/20 rounded-sm" style="height: 75%"></div>
+                <span class="text-[10px] text-neutral-500 font-mono">Deep</span>
+              </div>
+              <div class="flex-1 flex flex-col items-center gap-2">
+                <div class="w-full bg-purple-500 rounded-sm shadow-[0_0_15px_rgba(168,85,247,0.5)]" style="height: 90%"></div>
+                <span class="text-[10px] text-purple-400 font-mono">YARA</span>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <span class="px-2 py-1 rounded text-xs bg-sky-500/10 text-sky-400 border border-sky-500/20">Hash ✓</span>
+              <span class="px-2 py-1 rounded text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">ClamAV ✓</span>
+              <span class="px-2 py-1 rounded text-xs bg-purple-500/10 text-purple-400 border border-purple-500/20">YARA ⚠</span>
+              <span class="px-2 py-1 rounded text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20">Deep ✓</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 6 — CORE FEATURES (3x2 Grid) -->
+    <section id="features" class="py-24 relative z-20">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="text-center mb-16">
+          <h2 class="text-3xl md:text-4xl font-semibold text-white mb-4">Everything you need. Nothing you don't.</h2>
+          <p class="text-neutral-400 max-w-xl mx-auto">Professional-grade file security without the enterprise price tag or privacy trade-offs.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="p-6 rounded border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] transition-all group">
+            <iconify-icon icon="lucide:folder-clock" width="20" class="text-neutral-400 group-hover:text-emerald-400 transition-colors"></iconify-icon>
+            <h3 class="text-base font-semibold text-white mt-4">Real-time Folder Watcher</h3>
+            <p class="text-sm text-neutral-400 mt-2 leading-relaxed">Monitors directories and scans files the moment they arrive.</p>
+          </div>
+          <div class="p-6 rounded border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] transition-all group">
+            <iconify-icon icon="lucide:lock" width="20" class="text-neutral-400 group-hover:text-emerald-400 transition-colors"></iconify-icon>
+            <h3 class="text-base font-semibold text-white mt-4">Encrypted Quarantine Vault</h3>
+            <p class="text-sm text-neutral-400 mt-2 leading-relaxed">AES-256-GCM isolation with restore, delete, and forensic export.</p>
+          </div>
+          <div class="p-6 rounded border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] transition-all group">
+            <iconify-icon icon="lucide:hash" width="20" class="text-neutral-400 group-hover:text-emerald-400 transition-colors"></iconify-icon>
+            <h3 class="text-base font-semibold text-white mt-4">SHA-256 Hash Lookup</h3>
+            <p class="text-sm text-neutral-400 mt-2 leading-relaxed">500,000+ MalwareBazaar and NSRL signatures in local SQLite.</p>
+          </div>
+          <div class="p-6 rounded border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] transition-all group">
+            <iconify-icon icon="lucide:file-search" width="20" class="text-neutral-400 group-hover:text-emerald-400 transition-colors"></iconify-icon>
+            <h3 class="text-base font-semibold text-white mt-4">YARA Rule Engine</h3>
+            <p class="text-sm text-neutral-400 mt-2 leading-relaxed">Polyglot, packed executable, and metadata injection detection.</p>
+          </div>
+          <div class="p-6 rounded border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] transition-all group">
+            <iconify-icon icon="lucide:microscope" width="20" class="text-neutral-400 group-hover:text-emerald-400 transition-colors"></iconify-icon>
+            <h3 class="text-base font-semibold text-white mt-4">Deep File Analysis</h3>
+            <p class="text-sm text-neutral-400 mt-2 leading-relaxed">Magic bytes, Shannon entropy, ffprobe container inspection.</p>
+          </div>
+          <div class="p-6 rounded border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] transition-all group">
+            <iconify-icon icon="lucide:wifi-off" width="20" class="text-neutral-400 group-hover:text-emerald-400 transition-colors"></iconify-icon>
+            <h3 class="text-base font-semibold text-white mt-4">Offline Signature Updates</h3>
+            <p class="text-sm text-neutral-400 mt-2 leading-relaxed">MalwareBazaar CSV download or manual import for air-gapped systems.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 7 — RISK SCORE EXPLAINER -->
+    <section class="py-24 relative z-20">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="max-w-3xl mx-auto text-center">
+          <h2 class="text-3xl md:text-4xl font-semibold text-white mb-4">Understand every verdict.</h2>
+          <p class="text-neutral-400 mb-12">A transparent 0–100 risk score with per-engine breakdown — no black-box decisions.</p>
+
+          <!-- Tier Bar -->
+          <div class="flex h-2 rounded-full overflow-hidden mb-12">
+            <div class="flex-1 bg-emerald-500" title="Clean 0–20"></div>
+            <div class="flex-1 bg-amber-400" title="Suspicious 21–50"></div>
+            <div class="flex-1 bg-orange-500" title="High Risk 51–80"></div>
+            <div class="flex-1 bg-red-500" title="Malware 81–100"></div>
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-left">
+            <div>
+              <div class="flex items-center gap-2 mb-2">
+                <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                <span class="text-xs font-medium text-emerald-400 uppercase tracking-wider">Clean</span>
+              </div>
+              <p class="text-xs text-neutral-500 mb-1">0 – 20</p>
+              <p class="text-sm text-neutral-400">No engine flags. File appears safe.</p>
+            </div>
+            <div>
+              <div class="flex items-center gap-2 mb-2">
+                <div class="w-2 h-2 rounded-full bg-amber-400"></div>
+                <span class="text-xs font-medium text-amber-400 uppercase tracking-wider">Suspicious</span>
+              </div>
+              <p class="text-xs text-neutral-500 mb-1">21 – 50</p>
+              <p class="text-sm text-neutral-400">Minor anomalies — review before executing.</p>
+            </div>
+            <div>
+              <div class="flex items-center gap-2 mb-2">
+                <div class="w-2 h-2 rounded-full bg-orange-500"></div>
+                <span class="text-xs font-medium text-orange-400 uppercase tracking-wider">High Risk</span>
+              </div>
+              <p class="text-xs text-neutral-500 mb-1">51 – 80</p>
+              <p class="text-sm text-neutral-400">Multiple engine hits — quarantine recommended.</p>
+            </div>
+            <div>
+              <div class="flex items-center gap-2 mb-2">
+                <div class="w-2 h-2 rounded-full bg-red-500"></div>
+                <span class="text-xs font-medium text-red-400 uppercase tracking-wider">Malware</span>
+              </div>
+              <p class="text-xs text-neutral-500 mb-1">81 – 100</p>
+              <p class="text-sm text-neutral-400">Confirmed threat — isolate immediately.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 8 — OPEN SOURCE -->
+    <section id="docs" class="py-24 relative z-20">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div>
+            <h2 class="text-3xl md:text-4xl font-semibold text-white mb-6">Open source. Auditable. Yours.</h2>
+            <p class="text-neutral-400 mb-6 leading-relaxed">
+              Null Threat is licensed under GPL v3. Inspect the code, audit the engines, fork the project, and submit pull requests. No vendor lock-in, no hidden telemetry, no proprietary black boxes.
+            </p>
+            <a href="https://github.com" class="inline-flex items-center gap-2 border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] px-6 py-3 rounded transition-colors text-white text-sm font-medium">
+              <iconify-icon icon="lucide:github" width="18"></iconify-icon>
+              View on GitHub
+            </a>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="p-6 rounded border border-white/10 bg-white/[0.02]">
+              <p class="text-2xl font-semibold text-white">4</p>
+              <p class="text-sm text-neutral-400 mt-1">Detection engines</p>
+            </div>
+            <div class="p-6 rounded border border-white/10 bg-white/[0.02]">
+              <p class="text-2xl font-semibold text-white">500K+</p>
+              <p class="text-sm text-neutral-400 mt-1">Hash signatures</p>
+            </div>
+            <div class="p-6 rounded border border-white/10 bg-white/[0.02]">
+              <p class="text-2xl font-semibold text-white">GPL v3</p>
+              <p class="text-sm text-neutral-400 mt-1">License</p>
+            </div>
+            <div class="p-6 rounded border border-white/10 bg-white/[0.02]">
+              <p class="text-2xl font-semibold text-white">$0</p>
+              <p class="text-sm text-neutral-400 mt-1">Forever</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 9 — CTA -->
+    <section id="download" class="relative py-32 overflow-hidden">
+      <div class="absolute inset-0 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1707430393809-784967fe6fee?w=3840&q=80');"></div>
+      <div class="absolute inset-0 bg-[#030304]/80"></div>
+      <div class="absolute inset-0 radial-glow-emerald"></div>
+
+      <div class="relative z-10 max-w-3xl mx-auto px-6 text-center">
+        <h2 class="text-4xl md:text-5xl font-semibold text-white mb-6">Security that never phones home.</h2>
+        <p class="text-neutral-400 mb-8">Free forever. No account required. Available for Windows, macOS, and Linux.</p>
+        <div class="flex flex-wrap items-center justify-center gap-4">
+          <a href="#" class="inline-flex items-center gap-2 border border-white/20 text-white text-sm font-medium px-6 py-3 rounded-sm hover:bg-white hover:text-black transition-all">
+            <iconify-icon icon="lucide:monitor" width="16"></iconify-icon>
+            Windows
+          </a>
+          <a href="#" class="inline-flex items-center gap-2 border border-white/20 text-white text-sm font-medium px-6 py-3 rounded-sm hover:bg-white hover:text-black transition-all">
+            <iconify-icon icon="lucide:apple" width="16"></iconify-icon>
+            macOS
+          </a>
+          <a href="#" class="inline-flex items-center gap-2 border border-white/20 text-white text-sm font-medium px-6 py-3 rounded-sm hover:bg-white hover:text-black transition-all">
+            <iconify-icon icon="lucide:terminal" width="16"></iconify-icon>
+            Linux
+          </a>
+        </div>
+        <p class="text-xs text-neutral-500 mt-6">
+          Or <a href="#docs" class="text-neutral-400 hover:text-white transition-colors underline underline-offset-2">build from source</a> — Rust 1.77+ and Node.js 20+ required.
+        </p>
+      </div>
+    </section>
+
+    <!-- SECTION 10 — FOOTER -->
+    <footer class="relative z-20 py-16 border-t border-white/5">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-8">
+          <div class="col-span-2">
+            <div class="flex items-center gap-2.5 mb-4">
+              <div class="w-5 h-5 bg-gradient-to-br from-neutral-300 via-neutral-100 to-amber-500"></div>
+              <span class="font-semibold tracking-tight text-white text-sm">NULL THREAT</span>
+            </div>
+            <p class="text-sm text-neutral-400 max-w-xs">Scan locally. Trust nothing. Free, open-source desktop security for privacy-conscious users.</p>
+          </div>
+          <div>
+            <h4 class="text-xs font-semibold text-white uppercase tracking-wider mb-4">Product</h4>
+            <a href="#features" class="text-sm text-neutral-400 hover:text-white block mb-2 transition-colors">Features</a>
+            <a href="#engines" class="text-sm text-neutral-400 hover:text-white block mb-2 transition-colors">Engines</a>
+            <a href="#download" class="text-sm text-neutral-400 hover:text-white block mb-2 transition-colors">Download</a>
+            <a href="#" class="text-sm text-neutral-400 hover:text-white block mb-2 transition-colors">Changelog</a>
+          </div>
+          <div>
+            <h4 class="text-xs font-semibold text-white uppercase tracking-wider mb-4">Security</h4>
+            <a href="#" class="text-sm text-neutral-400 hover:text-white block mb-2 transition-colors">Quarantine</a>
+            <a href="#" class="text-sm text-neutral-400 hover:text-white block mb-2 transition-colors">Risk Score</a>
+            <a href="#" class="text-sm text-neutral-400 hover:text-white block mb-2 transition-colors">YARA Rules</a>
+            <a href="#" class="text-sm text-neutral-400 hover:text-white block mb-2 transition-colors">Security Policy</a>
+          </div>
+          <div>
+            <h4 class="text-xs font-semibold text-white uppercase tracking-wider mb-4">Resources</h4>
+            <a href="#" class="text-sm text-neutral-400 hover:text-white block mb-2 transition-colors">Documentation</a>
+            <a href="#" class="text-sm text-neutral-400 hover:text-white block mb-2 transition-colors">Build from Source</a>
+            <a href="#" class="text-sm text-neutral-400 hover:text-white block mb-2 transition-colors">Signature Updates</a>
+            <a href="#" class="text-sm text-neutral-400 hover:text-white block mb-2 transition-colors">FAQ</a>
+          </div>
+          <div>
+            <h4 class="text-xs font-semibold text-white uppercase tracking-wider mb-4">Community</h4>
+            <a href="https://github.com" class="text-sm text-neutral-400 hover:text-white block mb-2 transition-colors">GitHub</a>
+            <a href="#" class="text-sm text-neutral-400 hover:text-white block mb-2 transition-colors">Issues</a>
+            <a href="#" class="text-sm text-neutral-400 hover:text-white block mb-2 transition-colors">Contributing</a>
+            <a href="#" class="text-sm text-neutral-400 hover:text-white block mb-2 transition-colors">License</a>
+          </div>
+        </div>
+
+        <div class="border-t border-white/5 pt-8 mt-12 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p class="text-sm text-neutral-500">© 2026 Null Threat. GPL v3.</p>
+          <div class="flex items-center gap-4">
+            <a href="#" class="text-neutral-500 hover:text-white transition-colors">
+              <iconify-icon icon="lucide:twitter" width="18"></iconify-icon>
+            </a>
+            <a href="https://github.com" class="text-neutral-500 hover:text-white transition-colors">
+              <iconify-icon icon="lucide:github" width="18"></iconify-icon>
+            </a>
+            <a href="#" class="text-neutral-500 hover:text-white transition-colors">
+              <iconify-icon icon="lucide:linkedin" width="18"></iconify-icon>
+            </a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </main>
+
+  <!-- UnicornStudio -->
+  <script src="https://cdn.jsdelivr.net/gh/hiunicornstudio/unicornstudio.js@v1.4.29/dist/unicornStudio.umd.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      if (typeof UnicornStudio !== 'undefined') {
+        UnicornStudio.init();
+      }
+    });
+  </script>
+</body>
+</html>
