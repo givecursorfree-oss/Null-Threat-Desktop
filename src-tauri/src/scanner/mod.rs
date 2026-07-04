@@ -159,22 +159,18 @@ pub async fn run_scan_pipeline(
     // ── Score calculation ────────────────────────────────────────
     let mut hash_score: u32 = 0;
     let mut clam_score: u32 = 0;
-    let yara_score: u32;
     let mut magic_score: u32 = 0;
     let mut entropy_score: u32 = 0;
     let mut video_score: u32 = 0;
     let mut threat_name: Option<String> = None;
     let mut findings: Vec<String> = Vec::new();
 
-    match &hash_result {
-        HashResult::KnownMalware(name) => {
-            hash_score = 80;
-            threat_name = Some(name.clone());
-            findings.push(format!(
-                "SHA256 lookup: file hash matches known malware signature ({name})"
-            ));
-        }
-        _ => {}
+    if let HashResult::KnownMalware(name) = &hash_result {
+        hash_score = 80;
+        threat_name = Some(name.clone());
+        findings.push(format!(
+            "SHA256 lookup: file hash matches known malware signature ({name})"
+        ));
     }
 
     match &clam_result {
@@ -193,8 +189,7 @@ pub async fn run_scan_pipeline(
         _ => {}
     }
 
-    let yara_contribution = (yara_result.matched_rules.len() as u32 * 40).min(80);
-    yara_score = yara_contribution;
+    let yara_score = (yara_result.matched_rules.len() as u32 * 40).min(80);
     if let Some(reason) = &yara_result.skipped {
         findings.push(format!("YARA skipped: {reason}"));
     }

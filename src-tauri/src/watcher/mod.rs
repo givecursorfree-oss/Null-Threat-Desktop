@@ -16,6 +16,8 @@ pub struct FileWatcher {
     watcher: Mutex<Option<RecommendedWatcher>>,
     watched_paths: Mutex<Vec<PathBuf>>,
     enabled: Mutex<bool>,
+    /// Held while the consumer loop is active; dropping it closes the channel and ends the task.
+    event_tx: Mutex<Option<mpsc::Sender<PathBuf>>>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -64,12 +66,19 @@ impl ScanCoordinator {
     }
 }
 
+impl Default for FileWatcher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FileWatcher {
     pub fn new() -> Self {
         FileWatcher {
             watcher: Mutex::new(None),
             watched_paths: Mutex::new(Vec::new()),
             enabled: Mutex::new(false),
+            event_tx: Mutex::new(None),
         }
     }
 
@@ -95,6 +104,7 @@ impl FileWatcher {
         }
 
         let (tx, mut rx) = mpsc::channel::<PathBuf>(256);
+        *self.event_tx.lock().unwrap() = Some(tx.clone());
 
         let tx_clone = tx.clone();
         let watcher = RecommendedWatcher::new(
@@ -218,6 +228,8 @@ impl FileWatcher {
     pub fn stop(&self) -> Result<(), String> {
         let mut enabled = self.enabled.lock().unwrap();
         *enabled = false;
+        // Drop the stored sender and notify watcher so the consumer loop exits cleanly.
+        *self.event_tx.lock().unwrap() = None;
         let mut watcher = self.watcher.lock().unwrap();
         *watcher = None;
         let mut paths = self.watched_paths.lock().unwrap();

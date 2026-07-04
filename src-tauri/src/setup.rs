@@ -38,19 +38,13 @@ pub fn ensure_first_run_setup(db: &Database) -> Result<(), String> {
         return Ok(());
     }
 
-    db.set_setting("realtime_protection", "true")
+    db.set_setting("realtime_protection", "false")
         .map_err(|e| format!("DB error: {e}"))?;
-
-    for folder in default_watch_folders() {
-        if folder.exists() {
-            let _ = db.add_watched_folder(&folder.to_string_lossy());
-        }
-    }
 
     db.set_setting("setup_complete", "true")
         .map_err(|e| format!("DB error: {e}"))?;
 
-    log::info!("First-run setup complete: real-time protection enabled");
+    log::info!("First-run setup complete: real-time protection disabled until user opts in");
     Ok(())
 }
 

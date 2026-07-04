@@ -264,6 +264,22 @@ pub async fn toggle_realtime_protection(
     app: tauri::AppHandle,
 ) -> Result<(), String> {
     if enabled {
+        let existing = state
+            .db
+            .get_watched_folders()
+            .map_err(|e| format!("DB error: {e}"))?;
+        if existing.is_empty() {
+            for folder in crate::setup::default_watch_folders() {
+                if folder.exists() {
+                    let path = folder.to_string_lossy().to_string();
+                    state
+                        .db
+                        .add_watched_folder(&path)
+                        .map_err(|e| format!("DB error: {e}"))?;
+                }
+            }
+        }
+
         state.watcher.start(
             app,
             state.db.clone(),

@@ -52,7 +52,7 @@ fn main() {
                 .ok()
                 .flatten()
                 .map(|v| v == "true")
-                .unwrap_or(true);
+                .unwrap_or(false);
 
             if realtime_enabled {
                 let app_handle = app.handle().clone();

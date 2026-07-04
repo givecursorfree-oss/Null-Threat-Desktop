@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/null-threat/null-threat/actions"><img alt="Build Status" src="https://img.shields.io/github/actions/workflow/status/null-threat/null-threat/ci.yml?branch=main&label=build&style=flat-square" /></a>
+  <a href="https://github.com/null-threat/null-threat/actions"><img alt="Build Status" src="https://img.shields.io/github/actions/workflow/status/null-threat/null-threat/build.yml?branch=main&label=build&style=flat-square" /></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-GPLv3-blue?style=flat-square" /></a>
   <a href="#installation"><img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-brightgreen?style=flat-square" /></a>
   <a href="https://github.com/null-threat/null-threat/releases"><img alt="Version" src="https://img.shields.io/github/v/release/null-threat/null-threat?style=flat-square" /></a>

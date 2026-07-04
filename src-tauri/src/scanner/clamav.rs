@@ -156,6 +156,10 @@ pub fn configure_runtime_env(cmd: &mut Command, runtime_root: &Path) {
             cmd.env("DYLD_LIBRARY_PATH", merged);
         }
     }
+
+    // On platforms without bundled shared libs (e.g. Windows) the params are unused.
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    let _ = (cmd, runtime_root);
 }
 
 fn normalize_scan_path(path: &Path) -> PathBuf {

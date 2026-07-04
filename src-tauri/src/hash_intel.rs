@@ -201,8 +201,7 @@ pub async fn run_hash_intel_update(
 
         let entries = tokio::task::spawn_blocking(download_malwarebazaar_entries)
             .await
-            .map_err(|e| format!("Task join error: {e}"))?
-            .map_err(|e| e)?;
+            .map_err(|e| format!("Task join error: {e}"))??;
 
         emit_update(
             &app,

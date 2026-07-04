@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Null Threat",
   "version": "0.1.0",
-  "identifier": "com.nullthreat.app",
+  "identifier": "dev.nullthreat.desktop",
   "build": {
     "beforeDevCommand": "npm run dev:vite",
     "devUrl": "http://localhost:1420",
@@ -39,13 +39,7 @@
     "resources": [
       "../rules/",
       "resources/yara_rules/*",
-      "resources/clamav/*",
-      "binaries/windows/*",
-      "binaries/windows/certs/*",
-      "binaries/linux/*",
-      "binaries/linux/lib/*",
-      "binaries/macos/*",
-      "binaries/macos/lib/*"
+      "resources/clamav/*"
     ]
   }
 }

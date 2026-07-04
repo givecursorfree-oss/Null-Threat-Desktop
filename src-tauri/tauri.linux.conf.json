@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "resources": [
+      "../rules/",
+      "resources/yara_rules/*",
+      "resources/clamav/*",
+      "binaries/linux/*",
+      "binaries/linux/lib/*"
+    ]
+  }
+}

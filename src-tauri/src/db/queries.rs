@@ -5,6 +5,7 @@ use rusqlite::{params, Result as SqliteResult};
 impl Database {
     // ── Scan History ──────────────────────────────────────────────
 
+    #[allow(clippy::too_many_arguments)]
     pub fn insert_scan_record(
         &self,
         filename: &str,
@@ -123,7 +124,16 @@ impl Database {
             "INSERT OR IGNORE INTO watched_folders (path) VALUES (?1)",
             params![path],
         )?;
-        Ok(conn.last_insert_rowid())
+        let id = conn.last_insert_rowid();
+        if id == 0 {
+            conn.query_row(
+                "SELECT id FROM watched_folders WHERE path = ?1",
+                params![path],
+                |row| row.get(0),
+            )
+        } else {
+            Ok(id)
+        }
     }
 
     pub fn remove_watched_folder(&self, id: i64) -> SqliteResult<()> {
