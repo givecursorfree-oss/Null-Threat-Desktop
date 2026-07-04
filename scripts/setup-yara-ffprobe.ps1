@@ -2,12 +2,13 @@
 # Usage: .\scripts\setup-yara-ffprobe.ps1
 
 $ErrorActionPreference = "Stop"
+Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 $YaraVersion = "4.5.2"
 $YaraBuild = "2326"
 $ExifToolVersion = "13.59"
 $FfmpegUrl = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
-$ExifToolUrl = "https://downloads.sourceforge.net/project/exiftool/exiftool-${ExifToolVersion}_64.zip"
+$ExifToolUrl = "https://sourceforge.net/projects/exiftool/files/exiftool-${ExifToolVersion}_64.zip/download"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Root = Split-Path -Parent $ScriptDir
@@ -16,19 +17,56 @@ $TempDir = Join-Path ([System.IO.Path]::GetTempPath()) "null-threat-tools-setup"
 
 New-Item -ItemType Directory -Force -Path $BinDir, $TempDir | Out-Null
 
-function Get-YaraZipUrl {
-    param([string]$Version, [string]$Build)
-    "https://github.com/VirusTotal/yara/releases/download/v$Version/yara-v$Version-$Build-win64.zip"
+function Download-File {
+    param(
+        [string]$Url,
+        [string]$Destination,
+        [string]$Label
+    )
+    Write-Host "Downloading $Label..."
+    if (Test-Path $Destination) { Remove-Item -Force $Destination }
+
+    # curl is more reliable than Invoke-WebRequest on CI (redirects, large files).
+    curl.exe -fSL --retry 3 --retry-delay 2 -o $Destination $Url
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Label download failed (curl exit $LASTEXITCODE)"
+    }
+
+    if (-not (Test-Path $Destination)) {
+        throw "$Label download missing: $Destination"
+    }
+
+    $size = (Get-Item $Destination).Length
+    if ($size -lt 1024) {
+        throw "$Label download too small ($size bytes) — likely an HTML error page"
+    }
 }
 
-Write-Host "Downloading YARA $YaraVersion for Windows x64..."
+function Test-ZipFile {
+    param([string]$Path)
+    $bytes = [System.IO.File]::ReadAllBytes($Path)
+    if ($bytes.Length -lt 4 -or $bytes[0] -ne 0x50 -or $bytes[1] -ne 0x4B) {
+        throw "Not a valid zip archive: $Path"
+    }
+}
+
+function Expand-ZipFile {
+    param(
+        [string]$ZipPath,
+        [string]$Destination
+    )
+    Test-ZipFile -Path $ZipPath
+    if (Test-Path $Destination) { Remove-Item -Recurse -Force $Destination }
+    New-Item -ItemType Directory -Force -Path $Destination | Out-Null
+    [System.IO.Compression.ZipFile]::ExtractToDirectory($ZipPath, $Destination)
+}
+
 $YaraZip = Join-Path $TempDir "yara-win64.zip"
-$YaraUrl = Get-YaraZipUrl -Version $YaraVersion -Build $YaraBuild
-Invoke-WebRequest -Uri $YaraUrl -OutFile $YaraZip -UseBasicParsing
+$YaraUrl = "https://github.com/VirusTotal/yara/releases/download/v$YaraVersion/yara-v$YaraVersion-$YaraBuild-win64.zip"
+Download-File -Url $YaraUrl -Destination $YaraZip -Label "YARA $YaraVersion"
 
 $YaraExtract = Join-Path $TempDir "yara"
-if (Test-Path $YaraExtract) { Remove-Item -Recurse -Force $YaraExtract }
-Expand-Archive -Path $YaraZip -DestinationPath $YaraExtract -Force
+Expand-ZipFile -ZipPath $YaraZip -Destination $YaraExtract
 
 $YaraExe = Get-ChildItem -Path $YaraExtract -Recurse -Filter "yara64.exe" | Select-Object -First 1
 if (-not $YaraExe) {
@@ -41,13 +79,11 @@ Get-ChildItem -Path $YaraExe.DirectoryName -Filter "*.dll" | ForEach-Object {
     Copy-Item -Force $_.FullName (Join-Path $BinDir $_.Name)
 }
 
-Write-Host "Downloading FFmpeg (ffmpeg + ffprobe) for Windows x64..."
 $FfmpegZip = Join-Path $TempDir "ffmpeg-win64.zip"
-Invoke-WebRequest -Uri $FfmpegUrl -OutFile $FfmpegZip -UseBasicParsing
+Download-File -Url $FfmpegUrl -Destination $FfmpegZip -Label "FFmpeg"
 
 $FfmpegExtract = Join-Path $TempDir "ffmpeg"
-if (Test-Path $FfmpegExtract) { Remove-Item -Recurse -Force $FfmpegExtract }
-Expand-Archive -Path $FfmpegZip -DestinationPath $FfmpegExtract -Force
+Expand-ZipFile -ZipPath $FfmpegZip -Destination $FfmpegExtract
 
 $FfmpegBinDir = Get-ChildItem -Path $FfmpegExtract -Recurse -Directory -Filter "bin" | Select-Object -First 1
 if (-not $FfmpegBinDir) { throw "ffmpeg bin directory not found in archive" }
@@ -62,19 +98,11 @@ Get-ChildItem -Path $FfmpegBinDir.FullName -Filter "*.dll" | ForEach-Object {
     Copy-Item -Force $_.FullName (Join-Path $BinDir $_.Name)
 }
 
-Write-Host "Downloading ExifTool $ExifToolVersion for Windows..."
 $ExifZip = Join-Path $TempDir "exiftool-win.zip"
-# SourceForge mirrors require redirect following; curl handles this reliably on Windows.
-curl.exe -fsSL -o $ExifZip $ExifToolUrl
-if ($LASTEXITCODE -ne 0) { throw "ExifTool download failed (curl exit $LASTEXITCODE)" }
-$zipBytes = [System.IO.File]::ReadAllBytes($ExifZip)
-if ($zipBytes.Length -lt 2 -or $zipBytes[0] -ne 0x50 -or $zipBytes[1] -ne 0x4B) {
-    throw "ExifTool download did not return a valid zip archive"
-}
+Download-File -Url $ExifToolUrl -Destination $ExifZip -Label "ExifTool $ExifToolVersion"
 
 $ExifExtract = Join-Path $TempDir "exiftool"
-if (Test-Path $ExifExtract) { Remove-Item -Recurse -Force $ExifExtract }
-Expand-Archive -Path $ExifZip -DestinationPath $ExifExtract -Force
+Expand-ZipFile -ZipPath $ExifZip -Destination $ExifExtract
 
 $ExifExe = Get-ChildItem -Path $ExifExtract -Recurse -Filter "exiftool(-k).exe" | Select-Object -First 1
 if (-not $ExifExe) {
@@ -95,8 +123,16 @@ if ($ExifFilesDir) {
 
 Write-Host "Verifying bundled tools..."
 & (Join-Path $BinDir "yara.exe") --version
-& (Join-Path $BinDir "ffprobe.exe") -version
-& (Join-Path $BinDir "ffmpeg.exe") -version
-& (Join-Path $BinDir "exiftool.exe") -ver
+if ($LASTEXITCODE -ne 0) { throw "yara verification failed" }
+
+& (Join-Path $BinDir "ffprobe.exe") -version | Select-Object -First 1
+if ($LASTEXITCODE -ne 0) { throw "ffprobe verification failed" }
+
+& (Join-Path $BinDir "ffmpeg.exe") -version | Select-Object -First 1
+if ($LASTEXITCODE -ne 0) { throw "ffmpeg verification failed" }
+
+$exifVer = & (Join-Path $BinDir "exiftool.exe") -ver
+if ($LASTEXITCODE -ne 0) { throw "exiftool verification failed" }
+Write-Host "ExifTool $exifVer"
 
 Write-Host "Windows scanner tools ready in $BinDir"
