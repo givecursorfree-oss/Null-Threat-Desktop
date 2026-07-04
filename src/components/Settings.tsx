@@ -179,19 +179,36 @@ export default function Settings() {
             <CardTitle>Engine Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-1 text-xs text-muted-foreground">
+            <ul className="space-y-1.5 text-xs text-muted-foreground">
               <li>ClamAV: {deps.clamavAvailable ? "bundled" : "not found"}</li>
               <li>YARA: {deps.yaraAvailable ? "bundled" : "not found"}</li>
               <li>ffprobe: {deps.ffprobeAvailable ? "bundled" : "not found"}</li>
-              <li>YARA rules loaded: {deps.yaraRulesFound}</li>
+              <li className={deps.yaraRulesFound === 0 ? "text-amber-300" : undefined}>
+                YARA rules loaded:{" "}
+                {deps.yaraRulesFound > 0
+                  ? deps.yaraRulesFound.toLocaleString()
+                  : "none — restart the app or reinstall"}
+              </li>
               <li>
-                MalwareBazaar hashes:{" "}
+                MalwareBazaar hashes (recent):{" "}
                 {deps.malwarebazaarHashCount > 0
                   ? deps.malwarebazaarHashCount.toLocaleString()
                   : "none — update when online"}
               </li>
               <li>Database: {deps.dbConnected ? "connected" : "error"}</li>
             </ul>
+            {deps.yaraRulesFound === 0 && deps.yaraAvailable && (
+              <p className="mt-3 text-xs text-amber-300/90">
+                YARA is installed but no rule files were found. Bundled rules should install
+                automatically on launch — try restarting the app.
+              </p>
+            )}
+            {deps.malwarebazaarHashCount > 0 && deps.malwarebazaarHashCount < 2000 && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                The free MalwareBazaar feed includes recent samples (last ~48 hours). Use
+                &quot;Update hashes&quot; below when online to refresh this list daily.
+              </p>
+            )}
           </CardContent>
         </Card>
       )}

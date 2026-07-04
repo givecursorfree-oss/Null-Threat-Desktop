@@ -29,8 +29,8 @@ fn main() {
             setup::ensure_first_run_setup(&db).expect("First-run setup failed");
 
             let rules_dir = app_data_dir.join("yara_rules");
-            let resource_rules = app.path().resource_dir().ok().map(|r| r.join("rules"));
-            setup::copy_bundled_rules(&rules_dir, resource_rules);
+            let resource_dir = app.path().resource_dir().ok();
+            setup::ensure_yara_rules(&rules_dir, resource_dir.as_deref());
 
             let clamav_db_dir = app_data_dir.join("clamav_db");
             let clamav_runtime_dir = app_data_dir.join("clamav_runtime");

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowUpRight, FileSearch } from "lucide-react";
+import { ArrowUpRight, FileSearch, AlertCircle } from "lucide-react";
 import { useScanStore } from "../store/scanStore";
 import { fetchDashboardStats, fetchVerdictBreakdown } from "../lib/api";
 import ScanProgress from "./ScanProgress";
@@ -8,6 +8,7 @@ import VerdictBadge from "./VerdictBadge";
 import PageHeader from "./PageHeader";
 import LiveFeed from "./LiveFeed";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import type { VerdictBreakdown } from "../types";
 
@@ -21,6 +22,7 @@ export default function Dashboard() {
     detected: 0,
     critical: 0,
   });
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -31,8 +33,11 @@ export default function Dashboard() {
         ]);
         refreshStats(dashboardStats);
         setBreakdown(verdictBreakdown);
-      } catch {
-        /* ignore */
+        setLoadError(null);
+      } catch (err) {
+        setLoadError(
+          err instanceof Error ? err.message : "Could not load dashboard data"
+        );
       }
     };
     void loadDashboard();
@@ -60,6 +65,14 @@ export default function Dashboard() {
           </>
         }
       />
+
+      {loadError && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Dashboard unavailable</AlertTitle>
+          <AlertDescription>{loadError}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="mb-8 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
         <Metric label="Files scanned" value={stats.filesScanned.toLocaleString()} />

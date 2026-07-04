@@ -164,6 +164,7 @@ impl Database {
 
     pub fn add_to_whitelist(&self, path: &str, sha256: &str) -> SqliteResult<i64> {
         let conn = self.conn.lock().unwrap();
+        conn.execute("DELETE FROM whitelist WHERE sha256 = ?1", params![sha256])?;
         conn.execute(
             "INSERT INTO whitelist (path, sha256) VALUES (?1, ?2)",
             params![path, sha256],

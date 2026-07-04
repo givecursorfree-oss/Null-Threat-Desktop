@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
-import { Upload, FileSearch, File, AlertCircle, RotateCcw } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Upload, FileSearch, File, AlertCircle, RotateCcw, CheckCircle2, ShieldAlert } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { isTauri } from "@tauri-apps/api/core";
 import { useScanner } from "../hooks/useScanner";
@@ -14,19 +15,27 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import type { ScanResult as ScanResultType } from "../types";
 
+type ActionNotice =
+  | { type: "success"; title: string; message: string }
+  | { type: "error"; title: string; message: string };
+
 export default function ScanFile() {
+  const navigate = useNavigate();
   const { startScan, isScanning } = useScanner();
   const { refreshStats, reportToView, setReportToView } = useScanStore();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [result, setResult] = useState<ScanResultType | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
+  const [actionLoading, setActionLoading] = useState<"quarantine" | "trust" | null>(null);
 
   useEffect(() => {
     if (reportToView) {
       setResult(reportToView);
       setSelectedFile(reportToView.filePath);
       setError(null);
+      setActionNotice(null);
       setReportToView(null);
     }
   }, [reportToView, setReportToView]);
@@ -34,6 +43,7 @@ export default function ScanFile() {
   const runScan = useCallback(
     async (filePath: string) => {
       setError(null);
+      setActionNotice(null);
       setResult(null);
       setSelectedFile(filePath);
       try {
@@ -104,6 +114,72 @@ export default function ScanFile() {
     setResult(null);
     setSelectedFile(null);
     setError(null);
+    setActionNotice(null);
+  };
+
+  const handleQuarantine = async () => {
+    if (!result) return;
+    setActionNotice(null);
+    setActionLoading("quarantine");
+    try {
+      await quarantineFile(
+        result.filePath,
+        result.threatName || "Threat detected",
+        result.riskScore
+      );
+      refreshStats(await fetchDashboardStats());
+      setActionNotice({
+        type: "success",
+        title: "File quarantined",
+        message:
+          "The file was encrypted and moved to the Quarantine vault. The original has been removed from disk.",
+      });
+      setResult(null);
+      setSelectedFile(null);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : String(err ?? "Quarantine failed");
+      setActionNotice({
+        type: "error",
+        title: "Quarantine failed",
+        message,
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleTrust = async () => {
+    if (!result) return;
+    if (!result.sha256) {
+      setActionNotice({
+        type: "error",
+        title: "Cannot trust file",
+        message: "No SHA-256 hash was recorded for this scan. Scan the file again and retry.",
+      });
+      return;
+    }
+    setActionNotice(null);
+    setActionLoading("trust");
+    try {
+      await addToWhitelist(result.filePath, result.sha256);
+      setActionNotice({
+        type: "success",
+        title: "File trusted",
+        message:
+          "This file is now on your trusted list. Future scans will skip it unless you remove it in Settings.",
+      });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : String(err ?? "Could not add to trusted list");
+      setActionNotice({
+        type: "error",
+        title: "Trust failed",
+        message,
+      });
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   return (
@@ -118,6 +194,30 @@ export default function ScanFile() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Scan failed</AlertTitle>
           <AlertDescription className="break-words">{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {actionNotice && (
+        <Alert variant={actionNotice.type === "error" ? "destructive" : "default"}>
+          {actionNotice.type === "success" ? (
+            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+          ) : (
+            <AlertCircle className="h-4 w-4" />
+          )}
+          <AlertTitle>{actionNotice.title}</AlertTitle>
+          <AlertDescription className="break-words">{actionNotice.message}</AlertDescription>
+          {actionNotice.type === "success" && actionNotice.title === "File quarantined" && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => navigate("/quarantine")}
+            >
+              <ShieldAlert className="h-3 w-3" />
+              Open Quarantine
+            </Button>
+          )}
         </Alert>
       )}
 
@@ -183,17 +283,9 @@ export default function ScanFile() {
           </div>
           <ScanResult
             result={result}
-            onQuarantine={async () => {
-              await quarantineFile(
-                result.filePath,
-                result.threatName || "Threat detected",
-                result.riskScore
-              );
-              refreshStats(await fetchDashboardStats());
-            }}
-            onTrust={async () => {
-              await addToWhitelist(result.filePath, result.sha256);
-            }}
+            actionLoading={actionLoading}
+            onQuarantine={handleQuarantine}
+            onTrust={handleTrust}
           />
         </div>
       )}

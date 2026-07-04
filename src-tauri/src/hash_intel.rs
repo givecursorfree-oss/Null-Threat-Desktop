@@ -67,10 +67,10 @@ pub fn get_hash_intel_status(db: &Database) -> HashIntelStatus {
         "No malware hashes loaded yet. Null Threat still works offline — update when online for stronger hash detection.".to_string()
     } else if update_due {
         format!(
-            "{hash_count} malware hashes cached locally. Daily refresh recommended when you have internet."
+            "{hash_count} recent malware hashes cached locally. Daily refresh recommended when you have internet."
         )
     } else {
-        format!("{hash_count} malware hashes cached. Hash lookup works fully offline.")
+        format!("{hash_count} recent malware hashes cached. Hash lookup works fully offline.")
     };
 
     HashIntelStatus {

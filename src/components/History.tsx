@@ -96,6 +96,7 @@ export default function History() {
             <option value="clean">Clean</option>
             <option value="suspicious">Suspicious</option>
             <option value="detected">Detected</option>
+            <option value="critical">Critical</option>
           </select>
           <span
             className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"

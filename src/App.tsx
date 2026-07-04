@@ -9,6 +9,7 @@ import Quarantine from "./components/Quarantine";
 import History from "./components/History";
 import Settings from "./components/Settings";
 import HashIntelBanner from "./components/HashIntelBanner";
+import HashIntelWelcomeModal from "./components/onboarding/HashIntelWelcomeModal";
 import SignatureUpdateBanner from "./components/SignatureUpdateBanner";
 import { useAppInit } from "./hooks/useAppInit";
 
@@ -18,6 +19,7 @@ export default function App() {
   return (
     <ConsentProvider>
       <OnboardingGate>
+        <HashIntelWelcomeModal />
         <div className="relative flex h-screen w-screen overflow-hidden">
           <AppBackground />
           <Sidebar />

@@ -16,9 +16,10 @@ import type { ScanResult as ScanResultType, ThreatInfo } from "../types";
 
 interface ScanResultProps {
   result: ScanResultType;
-  onQuarantine?: () => void;
+  actionLoading?: "quarantine" | "trust" | null;
+  onQuarantine?: () => void | Promise<void>;
   onDelete?: () => void;
-  onTrust?: () => void;
+  onTrust?: () => void | Promise<void>;
   onViewFolder?: () => void;
 }
 
@@ -30,13 +31,16 @@ function formatFileSize(bytes: number): string {
 
 export default function ScanResult({
   result,
+  actionLoading,
   onQuarantine,
   onDelete,
   onTrust,
   onViewFolder,
 }: ScanResultProps) {
   const threatInfo: ThreatInfo | null =
-    (result.verdict === "detected" || result.verdict === "suspicious") &&
+    (result.verdict === "detected" ||
+      result.verdict === "suspicious" ||
+      result.verdict === "critical") &&
     (result.threatName || result.findings.length > 0)
       ? {
           name: result.threatName || "Suspicious file",
@@ -171,9 +175,12 @@ export default function ScanResult({
 
       <div className="flex gap-2">
         {result.verdict !== "clean" && onQuarantine && (
-          <Button onClick={onQuarantine}>
+          <Button
+            onClick={() => void onQuarantine()}
+            disabled={actionLoading === "quarantine"}
+          >
             <ShieldAlert className="h-4 w-4" />
-            Quarantine
+            {actionLoading === "quarantine" ? "Quarantining..." : "Quarantine"}
           </Button>
         )}
         {onDelete && (
@@ -183,9 +190,12 @@ export default function ScanResult({
           </Button>
         )}
         {result.verdict === "clean" && onTrust && (
-          <Button onClick={onTrust}>
+          <Button
+            onClick={() => void onTrust()}
+            disabled={actionLoading === "trust"}
+          >
             <CheckCircle className="h-4 w-4" />
-            Trust File
+            {actionLoading === "trust" ? "Trusting..." : "Trust File"}
           </Button>
         )}
         {onViewFolder && (

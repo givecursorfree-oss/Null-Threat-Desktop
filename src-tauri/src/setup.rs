@@ -187,32 +187,78 @@ pub fn copy_bundled_clamav_db(dest: &Path, resource_clamav: Option<PathBuf>) {
     }
 }
 
-pub fn copy_bundled_rules(dest: &Path, resource_rules: Option<PathBuf>) {
+pub fn copy_bundled_rules(dest: &Path, resource_dir: Option<&Path>) {
     std::fs::create_dir_all(dest).ok();
 
     let mut sources: Vec<PathBuf> = Vec::new();
-    if let Some(r) = resource_rules {
-        sources.push(r);
-    }
     sources.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../rules"));
+
+    if let Some(res) = resource_dir {
+        sources.push(res.join("rules"));
+        sources.push(res.to_path_buf());
+    }
+
     sources.push(PathBuf::from("rules"));
     sources.push(PathBuf::from("../rules"));
 
-    for source in sources {
-        if !source.exists() {
+    let mut copied_files = 0u32;
+    let source_count = sources.len();
+    for source in &sources {
+        if !source.is_dir() {
             continue;
         }
-        if let Ok(entries) = std::fs::read_dir(&source) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.extension().map(|e| e == "yar" || e == "yara").unwrap_or(false) {
-                    if let Some(name) = path.file_name() {
-                        let _ = std::fs::copy(&path, dest.join(name));
-                    }
-                }
+        copied_files += copy_yara_rule_files(source, dest);
+    }
+
+    let rule_count = crate::scanner::yara::count_yara_rules(dest);
+    if rule_count == 0 {
+        log::warn!(
+            "No YARA rules available at {} (checked {source_count} source paths)",
+            dest.display()
+        );
+    } else {
+        log::info!(
+            "YARA rules ready at {} ({rule_count} rules from {copied_files} files)",
+            dest.display()
+        );
+    }
+}
+
+fn copy_yara_rule_files(source: &Path, dest: &Path) -> u32 {
+    let mut copied = 0u32;
+    let Ok(entries) = std::fs::read_dir(source) else {
+        return 0;
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let is_rule = path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .map(|ext| ext.eq_ignore_ascii_case("yar") || ext.eq_ignore_ascii_case("yara"))
+            .unwrap_or(false);
+        if !is_rule {
+            continue;
+        }
+        if let Some(name) = path.file_name() {
+            if std::fs::copy(&path, dest.join(name)).is_ok() {
+                copied += 1;
             }
         }
-        log::info!("Copied YARA rules from {}", source.display());
-        break;
     }
+
+    copied
+}
+
+/// Re-install bundled YARA rules when the app data folder is empty.
+pub fn ensure_yara_rules(dest: &Path, resource_dir: Option<&Path>) -> u32 {
+    let existing = crate::scanner::yara::count_yara_rules(dest);
+    if existing > 0 {
+        return existing;
+    }
+    copy_bundled_rules(dest, resource_dir);
+    crate::scanner::yara::count_yara_rules(dest)
 }

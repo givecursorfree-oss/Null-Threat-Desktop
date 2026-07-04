@@ -6,6 +6,8 @@ use walkdir::WalkDir;
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct YaraResult {
     pub matched_rules: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skipped: Option<String>,
 }
 
 pub fn is_yara_available(runtime_dir: Option<&Path>) -> bool {
@@ -16,7 +18,10 @@ pub fn is_yara_available(runtime_dir: Option<&Path>) -> bool {
 pub async fn scan_with_yara(file_path: &Path, rules_dir: &Path, runtime_dir: Option<&Path>) -> YaraResult {
     if !rules_dir.exists() {
         log::warn!("YARA rules directory does not exist: {}", rules_dir.display());
-        return YaraResult { matched_rules: vec![] };
+        return YaraResult {
+            matched_rules: vec![],
+            skipped: Some(format!("rules directory not found ({})", rules_dir.display())),
+        };
     }
 
     let rule_files: Vec<String> = WalkDir::new(rules_dir)
@@ -30,14 +35,20 @@ pub async fn scan_with_yara(file_path: &Path, rules_dir: &Path, runtime_dir: Opt
         .collect();
 
     if rule_files.is_empty() {
-        return YaraResult { matched_rules: vec![] };
+        return YaraResult {
+            matched_rules: vec![],
+            skipped: Some("no YARA rule files found".into()),
+        };
     }
 
     let yara_bin = match resolve_tool_binary("yara", runtime_dir) {
         Some(p) => p,
         None => {
             log::warn!("YARA binary not found — run scripts/setup-scanner-tools");
-            return YaraResult { matched_rules: vec![] };
+            return YaraResult {
+                matched_rules: vec![],
+                skipped: Some("YARA binary not available".into()),
+            };
         }
     };
 
@@ -82,19 +93,34 @@ pub async fn scan_with_yara(file_path: &Path, rules_dir: &Path, runtime_dir: Opt
 
     matched.sort();
     matched.dedup();
-    YaraResult { matched_rules: matched }
+    YaraResult {
+        matched_rules: matched,
+        skipped: None,
+    }
 }
 
 pub fn count_yara_rules(rules_dir: &Path) -> u32 {
     if !rules_dir.exists() {
         return 0;
     }
-    WalkDir::new(rules_dir)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|e| {
-            let name = e.file_name().to_string_lossy();
-            name.ends_with(".yar") || name.ends_with(".yara")
-        })
-        .count() as u32
+
+    let mut count = 0u32;
+    for entry in WalkDir::new(rules_dir).into_iter().filter_map(|e| e.ok()) {
+        if !entry.file_type().is_file() {
+            continue;
+        }
+        let name = entry.file_name().to_string_lossy();
+        if !name.ends_with(".yar") && !name.ends_with(".yara") {
+            continue;
+        }
+        let Ok(content) = std::fs::read_to_string(entry.path()) else {
+            continue;
+        };
+        for line in content.lines() {
+            if line.trim_start().starts_with("rule ") {
+                count += 1;
+            }
+        }
+    }
+    count
 }

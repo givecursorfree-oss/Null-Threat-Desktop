@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { ShieldAlert, RotateCcw, Trash2, FileText, Inbox } from "lucide-react";
+import { ShieldAlert, RotateCcw, Trash2, FileText, Inbox, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useQuarantine } from "../hooks/useQuarantine";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function Quarantine() {
   const { quarantinedFiles, isLoading, restoreFile, deleteFile } = useQuarantine();
@@ -11,15 +12,55 @@ export default function Quarantine() {
     id: string;
     type: "restore" | "delete";
   } | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [notice, setNotice] = useState<{
+    type: "success" | "error";
+    title: string;
+    message: string;
+  } | null>(null);
 
   const handleRestore = async (id: string) => {
-    await restoreFile(id);
-    setConfirmAction(null);
+    setNotice(null);
+    setActionLoading(true);
+    try {
+      await restoreFile(id);
+      setConfirmAction(null);
+      setNotice({
+        type: "success",
+        title: "File restored",
+        message: "The file was decrypted and returned to its original location.",
+      });
+    } catch (err) {
+      setNotice({
+        type: "error",
+        title: "Restore failed",
+        message: err instanceof Error ? err.message : "Could not restore file",
+      });
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
-    await deleteFile(id);
-    setConfirmAction(null);
+    setNotice(null);
+    setActionLoading(true);
+    try {
+      await deleteFile(id);
+      setConfirmAction(null);
+      setNotice({
+        type: "success",
+        title: "File deleted",
+        message: "The quarantined file was permanently removed from the vault.",
+      });
+    } catch (err) {
+      setNotice({
+        type: "error",
+        title: "Delete failed",
+        message: err instanceof Error ? err.message : "Could not delete file",
+      });
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   function formatFileSize(bytes: number): string {
@@ -41,9 +82,21 @@ export default function Quarantine() {
       <div>
         <h1 className="font-display text-xl font-bold text-foreground">Quarantine Vault</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Isolated threats — files are encrypted and cannot execute
+          Isolated threats — files are encrypted with AES-256-GCM and cannot execute
         </p>
       </div>
+
+      {notice && (
+        <Alert variant={notice.type === "error" ? "destructive" : "default"}>
+          {notice.type === "success" ? (
+            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+          ) : (
+            <AlertCircle className="h-4 w-4" />
+          )}
+          <AlertTitle>{notice.title}</AlertTitle>
+          <AlertDescription>{notice.message}</AlertDescription>
+        </Alert>
+      )}
 
       {isLoading ? (
         <Card>
@@ -159,13 +212,18 @@ export default function Quarantine() {
                 <Button
                   onClick={() =>
                     confirmAction.type === "restore"
-                      ? handleRestore(confirmAction.id)
-                      : handleDelete(confirmAction.id)
+                      ? void handleRestore(confirmAction.id)
+                      : void handleDelete(confirmAction.id)
                   }
                   variant={confirmAction.type === "delete" ? "destructive" : "default"}
                   size="sm"
+                  disabled={actionLoading}
                 >
-                  {confirmAction.type === "restore" ? "Restore Anyway" : "Delete"}
+                  {actionLoading
+                    ? "Working..."
+                    : confirmAction.type === "restore"
+                      ? "Restore Anyway"
+                      : "Delete"}
                 </Button>
               </div>
             </CardContent>

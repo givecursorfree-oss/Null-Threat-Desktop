@@ -26,7 +26,7 @@ export type EngineName = "SHA256 Lookup" | "ClamAV Engine" | "YARA Rules" | "Dee
 
 export type EngineStatus = "waiting" | "running" | "complete";
 
-export type Verdict = "clean" | "detected" | "suspicious" | "unknown" | "skipped";
+export type Verdict = "clean" | "detected" | "suspicious" | "critical" | "unknown" | "skipped";
 
 export interface ScanProgress {
   engineName: EngineName;

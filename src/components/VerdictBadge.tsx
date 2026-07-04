@@ -5,6 +5,7 @@ import type { Verdict } from "@/types";
 const verdictStyles: Record<Verdict, string> = {
   clean: "border-emerald-500/25 bg-emerald-500/10 text-emerald-200",
   detected: "border-red-500/40 bg-red-500/10 text-red-300",
+  critical: "border-red-600/50 bg-red-600/15 text-red-200",
   suspicious: "border-amber-500/40 bg-amber-500/10 text-amber-300",
   skipped: "border-border bg-white/[0.03] text-muted-foreground",
   unknown: "border-border bg-white/[0.03] text-muted-foreground",
@@ -13,6 +14,7 @@ const verdictStyles: Record<Verdict, string> = {
 const verdictLabels: Record<Verdict, string> = {
   clean: "Clean",
   detected: "Detected",
+  critical: "Critical",
   suspicious: "Suspicious",
   skipped: "Skipped",
   unknown: "Unknown",

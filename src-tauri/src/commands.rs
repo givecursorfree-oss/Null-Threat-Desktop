@@ -292,9 +292,23 @@ pub async fn add_to_whitelist(
     sha256: String,
     state: State<'_, AppState>,
 ) -> Result<i64, String> {
+    let sha = if sha256.trim().is_empty() {
+        let file_path = PathBuf::from(&path);
+        if !file_path.exists() {
+            return Err(format!("File not found: {path}"));
+        }
+        let computed = tokio::task::spawn_blocking(move || crate::scanner::hash::compute_sha256(&file_path))
+            .await
+            .map_err(|e| format!("Task error: {e}"))?
+            .map_err(|e| format!("Hash I/O error: {e}"))?;
+        computed
+    } else {
+        sha256
+    };
+
     state
         .db
-        .add_to_whitelist(&path, &sha256)
+        .add_to_whitelist(&path, &sha)
         .map_err(|e| format!("DB error: {e}"))
 }
 
@@ -388,7 +402,10 @@ pub async fn check_dependencies(
     let runtime = Some(state.clamav_runtime_dir.as_path());
     let yara_available = crate::scanner::yara::is_yara_available(runtime);
     let ffprobe_available = crate::scanner::video::is_ffprobe_available(runtime);
-    let yara_rules_found = crate::scanner::yara::count_yara_rules(&state.rules_dir);
+    let yara_rules_found = crate::setup::ensure_yara_rules(
+        &state.rules_dir,
+        state.resource_dir.as_deref(),
+    );
     let db_connected = state.db.conn.lock().is_ok();
     let malwarebazaar_hash_count = state.db.count_malwarebazaar().unwrap_or(0);
 

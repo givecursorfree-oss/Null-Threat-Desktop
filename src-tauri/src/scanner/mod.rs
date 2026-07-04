@@ -120,7 +120,10 @@ pub async fn run_scan_pipeline(
             threat_name: None,
             hash_result: HashResult::Clean,
             clam_result: ClamResult::Clean,
-            yara_result: YaraResult { matched_rules: vec![] },
+            yara_result: YaraResult {
+                matched_rules: vec![],
+                skipped: None,
+            },
             deep_analysis: empty_deep,
             engine_results: EngineResults {
                 hash_score: 0,
@@ -192,6 +195,9 @@ pub async fn run_scan_pipeline(
 
     let yara_contribution = (yara_result.matched_rules.len() as u32 * 40).min(80);
     yara_score = yara_contribution;
+    if let Some(reason) = &yara_result.skipped {
+        findings.push(format!("YARA skipped: {reason}"));
+    }
     for rule in &yara_result.matched_rules {
         findings.push(format!("YARA rule matched: {rule}"));
     }

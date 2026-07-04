@@ -25,7 +25,7 @@ interface RustScanResult {
   threat_name?: string | null;
   hash_result: string | { KnownMalware?: string };
   clam_result: string | { Detected?: string; Unavailable?: string };
-  yara_result: { matched_rules: string[] };
+  yara_result: { matched_rules: string[]; skipped?: string | null };
   deep_analysis: {
     entropy: number;
     high_entropy: boolean;
@@ -138,7 +138,10 @@ export function mapVerdict(rustVerdict: string, riskScore: number): Verdict {
   if (rustVerdict === "whitelisted" || rustVerdict === "clean" || riskScore <= 20) {
     return "clean";
   }
-  if (rustVerdict === "malicious" || riskScore >= 51) {
+  if (rustVerdict === "malware" || riskScore >= 81) {
+    return "critical";
+  }
+  if (rustVerdict === "high_risk" || rustVerdict === "malicious" || riskScore >= 51) {
     return "detected";
   }
   if (rustVerdict === "suspicious" || riskScore >= 21) {
@@ -213,10 +216,13 @@ function buildEngineDetails(raw: RustScanResult): EngineResult[] {
     {
       engineName: "YARA Rules",
       status: "complete",
-      verdict: engineVerdict(raw.engine_results.yara_score, raw.yara_result.matched_rules.length > 0),
+      verdict: raw.yara_result.skipped
+        ? "skipped"
+        : engineVerdict(raw.engine_results.yara_score, raw.yara_result.matched_rules.length > 0),
       elapsed: 0,
-      details:
-        raw.yara_result.matched_rules.length > 0
+      details: raw.yara_result.skipped
+        ? raw.yara_result.skipped
+        : raw.yara_result.matched_rules.length > 0
           ? raw.yara_result.matched_rules.join(", ")
           : "No custom threat rules matched",
     },
