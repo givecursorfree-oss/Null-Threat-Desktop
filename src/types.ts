@@ -62,6 +62,7 @@ export interface VerdictBreakdown {
 
 export interface DependencyStatus {
   clamavAvailable: boolean;
+  yaraAvailable: boolean;
   ffprobeAvailable: boolean;
   yaraRulesFound: number;
   dbConnected: boolean;

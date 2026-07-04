@@ -180,8 +180,9 @@ export default function Settings() {
           </CardHeader>
           <CardContent>
             <ul className="space-y-1 text-xs text-muted-foreground">
-              <li>ClamAV: {deps.clamavAvailable ? "available" : "not found (optional)"}</li>
-              <li>ffprobe: {deps.ffprobeAvailable ? "installed" : "not found (optional)"}</li>
+              <li>ClamAV: {deps.clamavAvailable ? "bundled" : "not found"}</li>
+              <li>YARA: {deps.yaraAvailable ? "bundled" : "not found"}</li>
+              <li>ffprobe: {deps.ffprobeAvailable ? "bundled" : "not found"}</li>
               <li>YARA rules loaded: {deps.yaraRulesFound}</li>
               <li>
                 MalwareBazaar hashes:{" "}

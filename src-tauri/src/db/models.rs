@@ -62,6 +62,7 @@ pub struct VerdictBreakdown {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DependencyStatus {
     pub clamav_available: bool,
+    pub yara_available: bool,
     pub ffprobe_available: bool,
     pub yara_rules_found: u32,
     pub db_connected: bool,

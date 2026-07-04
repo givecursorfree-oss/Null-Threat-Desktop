@@ -1,4 +1,5 @@
 use crate::db::Database;
+use crate::process_util;
 use crate::scanner::clamav;
 use chrono::{DateTime, Duration, Utc};
 use serde::Serialize;
@@ -166,6 +167,7 @@ pub async fn run_signature_update(
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
             clamav::configure_runtime_env(&mut cmd, &runtime_root);
+            process_util::configure_hidden_subprocess(&mut cmd);
             cmd.output()
         })
         .await

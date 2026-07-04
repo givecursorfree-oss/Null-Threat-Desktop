@@ -2,6 +2,7 @@ pub mod clamav;
 pub mod deep;
 pub mod entropy;
 pub mod hash;
+pub mod tools;
 pub mod video;
 pub mod yara;
 
@@ -144,12 +145,12 @@ pub async fn run_scan_pipeline(
 
     // ── Stage 3: YARA scan ───────────────────────────────────────
     emit_progress(app, "yara", 55, "Running YARA rule scan...");
-    let yara_result = yara::scan_with_yara(&path, rules_dir).await;
+    let yara_result = yara::scan_with_yara(&path, rules_dir, clamav_runtime_dir).await;
     emit_progress(app, "yara", 70, "YARA scan complete");
 
     // ── Stage 4: Deep analysis ───────────────────────────────────
     emit_progress(app, "deep", 75, "Running deep analysis...");
-    let deep_analysis = deep::run_deep_analysis(&path).await;
+    let deep_analysis = deep::run_deep_analysis(&path, clamav_runtime_dir).await;
     emit_progress(app, "deep", 90, "Deep analysis complete");
 
     // ── Score calculation ────────────────────────────────────────

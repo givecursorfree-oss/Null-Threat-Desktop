@@ -1,3 +1,4 @@
+use crate::process_util;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -232,6 +233,7 @@ pub async fn scan_with_clamav(
             .arg(&path_str);
 
         configure_runtime_env(&mut cmd, &runtime_root);
+        process_util::configure_hidden_subprocess(&mut cmd);
 
         cmd.output()
     })

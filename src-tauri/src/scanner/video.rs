@@ -1,3 +1,5 @@
+use crate::process_util;
+use crate::scanner::tools::{self, configure_runtime_env, resolve_tool_binary, runtime_root_for};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::process::Command;
@@ -12,7 +14,11 @@ const VIDEO_EXTENSIONS: &[&str] = &[
     "mp4", "avi", "mkv", "mov", "wmv", "flv", "webm", "m4v", "mpeg", "mpg", "3gp",
 ];
 
-pub async fn analyze_video(file_path: &Path) -> VideoAnalysisResult {
+pub fn is_ffprobe_available(runtime_dir: Option<&Path>) -> bool {
+    tools::is_ffprobe_available(runtime_dir)
+}
+
+pub async fn analyze_video(file_path: &Path, runtime_dir: Option<&Path>) -> VideoAnalysisResult {
     let ext = file_path
         .extension()
         .map(|e| e.to_string_lossy().to_lowercase())
@@ -25,30 +31,36 @@ pub async fn analyze_video(file_path: &Path) -> VideoAnalysisResult {
         };
     }
 
-    let ffprobe = match which::which("ffprobe") {
-        Ok(p) => p,
-        Err(_) => {
-            log::warn!("ffprobe not found in PATH, skipping video analysis");
+    let ffprobe = match resolve_tool_binary("ffprobe", runtime_dir) {
+        Some(p) => p,
+        None => {
+            log::warn!("ffprobe not found — run scripts/setup-scanner-tools");
             return VideoAnalysisResult {
                 is_video: true,
-                anomalies: vec!["ffprobe unavailable – could not analyze".into()],
+                anomalies: vec!["ffprobe unavailable — run setup-scanner-tools".into()],
             };
         }
     };
 
+    let runtime_root = runtime_root_for(&ffprobe);
     let path_str = file_path.to_string_lossy().to_string();
     let probe_path = ffprobe.clone();
 
     let output = tokio::task::spawn_blocking(move || {
-        Command::new(probe_path)
+        let mut cmd = Command::new(probe_path);
+        cmd.current_dir(&runtime_root)
             .args([
-                "-v", "quiet",
-                "-print_format", "json",
+                "-v",
+                "quiet",
+                "-print_format",
+                "json",
                 "-show_format",
                 "-show_streams",
                 &path_str,
-            ])
-            .output()
+            ]);
+        configure_runtime_env(&mut cmd, &runtime_root);
+        process_util::configure_hidden_subprocess(&mut cmd);
+        cmd.output()
     })
     .await;
 
@@ -92,12 +104,10 @@ fn check_polyglot_indicators(path: &Path, anomalies: &mut Vec<String>) {
         return;
     }
 
-    // PE header: MZ magic bytes
     if header.len() >= 2 && header[0] == 0x4D && header[1] == 0x5A {
         anomalies.push("PE (MZ) header detected in video container".into());
     }
 
-    // ZIP header: PK magic bytes
     if header.len() >= 4 && header[0] == 0x50 && header[1] == 0x4B && header[2] == 0x03 && header[3] == 0x04 {
         anomalies.push("ZIP (PK) header detected in video container".into());
     }

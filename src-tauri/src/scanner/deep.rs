@@ -106,7 +106,7 @@ pub fn check_magic_bytes(path: &Path) -> MagicByteCheck {
     }
 }
 
-pub async fn run_deep_analysis(path: &Path) -> DeepAnalysisResult {
+pub async fn run_deep_analysis(path: &Path, runtime_dir: Option<&Path>) -> DeepAnalysisResult {
     let path_owned = path.to_path_buf();
 
     let entropy_val = tokio::task::spawn_blocking({
@@ -117,7 +117,7 @@ pub async fn run_deep_analysis(path: &Path) -> DeepAnalysisResult {
     .unwrap_or(0.0);
 
     let magic = check_magic_bytes(path);
-    let video_result = video::analyze_video(path).await;
+    let video_result = video::analyze_video(path, runtime_dir).await;
 
     DeepAnalysisResult {
         entropy: entropy_val,

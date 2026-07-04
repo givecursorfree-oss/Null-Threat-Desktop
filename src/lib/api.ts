@@ -63,6 +63,7 @@ interface RustVerdictBreakdown {
 
 interface RustDependencyStatus {
   clamav_available: boolean;
+  yara_available: boolean;
   ffprobe_available: boolean;
   yara_rules_found: number;
   db_connected: boolean;
@@ -277,6 +278,7 @@ function mapVerdictBreakdown(raw: RustVerdictBreakdown): VerdictBreakdown {
 function mapDependencies(raw: RustDependencyStatus): DependencyStatus {
   return {
     clamavAvailable: raw.clamav_available,
+    yaraAvailable: raw.yara_available,
     ffprobeAvailable: raw.ffprobe_available,
     yaraRulesFound: raw.yara_rules_found,
     dbConnected: raw.db_connected,

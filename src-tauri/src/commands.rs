@@ -385,13 +385,16 @@ pub async fn check_dependencies(
             &state.clamav_db_dir,
             Some(&state.clamav_runtime_dir),
         );
-    let ffprobe_available = which::which("ffprobe").is_ok();
+    let runtime = Some(state.clamav_runtime_dir.as_path());
+    let yara_available = crate::scanner::yara::is_yara_available(runtime);
+    let ffprobe_available = crate::scanner::video::is_ffprobe_available(runtime);
     let yara_rules_found = crate::scanner::yara::count_yara_rules(&state.rules_dir);
     let db_connected = state.db.conn.lock().is_ok();
     let malwarebazaar_hash_count = state.db.count_malwarebazaar().unwrap_or(0);
 
     Ok(DependencyStatus {
         clamav_available,
+        yara_available,
         ffprobe_available,
         yara_rules_found,
         db_connected,

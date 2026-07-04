@@ -1,3 +1,5 @@
+use crate::process_util;
+use crate::scanner::tools::{self, configure_runtime_env, resolve_tool_binary, runtime_root_for};
 use std::path::Path;
 use walkdir::WalkDir;
 
@@ -6,9 +8,12 @@ pub struct YaraResult {
     pub matched_rules: Vec<String>,
 }
 
-/// Load all .yar/.yara files from the rules directory and scan file bytes.
-/// Uses subprocess call to `yara` CLI since yara-rust has complex build deps.
-pub async fn scan_with_yara(file_path: &Path, rules_dir: &Path) -> YaraResult {
+pub fn is_yara_available(runtime_dir: Option<&Path>) -> bool {
+    tools::is_yara_available(runtime_dir)
+}
+
+/// Scan with bundled or system YARA using all rules in one invocation.
+pub async fn scan_with_yara(file_path: &Path, rules_dir: &Path, runtime_dir: Option<&Path>) -> YaraResult {
     if !rules_dir.exists() {
         log::warn!("YARA rules directory does not exist: {}", rules_dir.display());
         return YaraResult { matched_rules: vec![] };
@@ -28,50 +33,55 @@ pub async fn scan_with_yara(file_path: &Path, rules_dir: &Path) -> YaraResult {
         return YaraResult { matched_rules: vec![] };
     }
 
-    let yara_bin = match which::which("yara") {
-        Ok(p) => p,
-        Err(_) => {
-            log::warn!("YARA binary not found in PATH, skipping YARA scan");
+    let yara_bin = match resolve_tool_binary("yara", runtime_dir) {
+        Some(p) => p,
+        None => {
+            log::warn!("YARA binary not found — run scripts/setup-scanner-tools");
             return YaraResult { matched_rules: vec![] };
         }
     };
 
+    let runtime_root = runtime_root_for(&yara_bin);
     let file_str = file_path.to_string_lossy().to_string();
+
+    let result = tokio::task::spawn_blocking(move || {
+        let mut cmd = std::process::Command::new(&yara_bin);
+        cmd.current_dir(&runtime_root);
+        for rule in &rule_files {
+            cmd.arg(rule);
+        }
+        cmd.arg(&file_str);
+        configure_runtime_env(&mut cmd, &runtime_root);
+        process_util::configure_hidden_subprocess(&mut cmd);
+        cmd.output()
+    })
+    .await;
+
     let mut matched = Vec::new();
 
-    for rule_file in rule_files {
-        let yara_path = yara_bin.clone();
-        let target = file_str.clone();
-        let rule = rule_file.clone();
-
-        let result = tokio::task::spawn_blocking(move || {
-            std::process::Command::new(yara_path)
-                .arg(&rule)
-                .arg(&target)
-                .output()
-        })
-        .await;
-
-        match result {
-            Ok(Ok(output)) => {
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                for line in stdout.lines() {
-                    if let Some(rule_name) = line.split_whitespace().next() {
-                        if !rule_name.is_empty() {
-                            matched.push(rule_name.to_string());
-                        }
+    match result {
+        Ok(Ok(output)) => {
+            if !output.status.success() && output.status.code() != Some(1) {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                if !stderr.trim().is_empty() {
+                    log::warn!("YARA scan stderr: {}", stderr.trim());
+                }
+            }
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            for line in stdout.lines() {
+                if let Some(rule_name) = line.split_whitespace().next() {
+                    if !rule_name.is_empty() {
+                        matched.push(rule_name.to_string());
                     }
                 }
             }
-            Ok(Err(e)) => {
-                log::warn!("YARA scan error for {}: {}", rule_file, e);
-            }
-            Err(e) => {
-                log::warn!("YARA task join error: {}", e);
-            }
         }
+        Ok(Err(e)) => log::warn!("YARA scan error: {e}"),
+        Err(e) => log::warn!("YARA task join error: {e}"),
     }
 
+    matched.sort();
+    matched.dedup();
     YaraResult { matched_rules: matched }
 }
 

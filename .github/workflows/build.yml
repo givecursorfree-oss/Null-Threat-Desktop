@@ -27,15 +27,18 @@ jobs:
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
             patchelf build-essential curl wget file libssl-dev \
-            clamav clamav-freshclam patchelf
+            clamav clamav-freshclam patchelf yara ffmpeg
 
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Bundle ClamAV for Linux
         run: |
-          chmod +x scripts/setup-clamav-linux.sh
+          chmod +x scripts/setup-clamav-linux.sh scripts/setup-yara-ffprobe-linux.sh
           ./scripts/setup-clamav-linux.sh
+          ./scripts/setup-yara-ffprobe-linux.sh
           ./src-tauri/binaries/linux/clamscan --version
+          ./src-tauri/binaries/linux/yara --version
+          ./src-tauri/binaries/linux/ffprobe -version
           if [ -f src-tauri/resources/clamav/main.cvd ]; then
             echo "test" > /tmp/null-threat-clam-test.txt
             ./src-tauri/binaries/linux/clamscan --database=src-tauri/resources/clamav /tmp/null-threat-clam-test.txt
@@ -70,13 +73,16 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Install ClamAV via Homebrew
-        run: brew install clamav
+        run: brew install clamav yara ffmpeg
 
-      - name: Bundle ClamAV for macOS
+      - name: Bundle scanner tools for macOS
         run: |
-          chmod +x scripts/setup-clamav-macos.sh
+          chmod +x scripts/setup-clamav-macos.sh scripts/setup-yara-ffprobe-macos.sh
           ./scripts/setup-clamav-macos.sh
+          ./scripts/setup-yara-ffprobe-macos.sh
           ./src-tauri/binaries/macos/clamscan --version
+          ./src-tauri/binaries/macos/yara --version
+          ./src-tauri/binaries/macos/ffprobe -version
           if [ -f src-tauri/resources/clamav/main.cvd ]; then
             echo "test" > /tmp/null-threat-clam-test.txt
             ./src-tauri/binaries/macos/clamscan --database=src-tauri/resources/clamav /tmp/null-threat-clam-test.txt
@@ -110,7 +116,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Bundle ClamAV for Windows
+      - name: Bundle scanner tools for Windows
         shell: pwsh
         run: |
           if (Test-Path src-tauri/binaries/windows/clamscan.exe) {
@@ -118,7 +124,10 @@ jobs:
           } else {
             .\scripts\setup-clamav-ci.ps1
           }
+          .\scripts\setup-yara-ffprobe.ps1
           .\src-tauri\binaries\windows\clamscan.exe --version
+          .\src-tauri\binaries\windows\yara.exe --version
+          .\src-tauri\binaries\windows\ffprobe.exe -version
           Get-ChildItem src-tauri\resources\clamav\
 
       - name: Build Windows app

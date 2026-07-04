@@ -1,0 +1,98 @@
+use std::path::{Path, PathBuf};
+use std::process::Command;
+
+pub fn platform_binaries_dir() -> &'static str {
+    #[cfg(target_os = "windows")]
+    {
+        "binaries/windows"
+    }
+    #[cfg(target_os = "macos")]
+    {
+        "binaries/macos"
+    }
+    #[cfg(target_os = "linux")]
+    {
+        "binaries/linux"
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+    {
+        "binaries/linux"
+    }
+}
+
+fn tool_filename(base: &str) -> String {
+    #[cfg(target_os = "windows")]
+    {
+        format!("{base}.exe")
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        base.to_string()
+    }
+}
+
+fn bundled_runtime_candidates(runtime_dir: Option<&Path>) -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    if let Some(rt) = runtime_dir {
+        dirs.push(rt.to_path_buf());
+    }
+    dirs.push(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(platform_binaries_dir()),
+    );
+    dirs
+}
+
+pub fn resolve_tool_binary(tool: &str, runtime_dir: Option<&Path>) -> Option<PathBuf> {
+    let filename = tool_filename(tool);
+    for dir in bundled_runtime_candidates(runtime_dir) {
+        let bundled = dir.join(&filename);
+        if bundled.is_file() {
+            return Some(bundled);
+        }
+    }
+    which::which(&filename).ok()
+}
+
+pub fn is_yara_available(runtime_dir: Option<&Path>) -> bool {
+    resolve_tool_binary("yara", runtime_dir).is_some()
+}
+
+pub fn is_ffprobe_available(runtime_dir: Option<&Path>) -> bool {
+    resolve_tool_binary("ffprobe", runtime_dir).is_some()
+}
+
+/// Ensures bundled shared libraries are visible to subprocesses on Unix.
+pub fn configure_runtime_env(cmd: &mut Command, runtime_root: &Path) {
+    #[cfg(target_os = "linux")]
+    {
+        let lib_dir = runtime_root.join("lib");
+        if lib_dir.is_dir() {
+            let lib_path = lib_dir.to_string_lossy().to_string();
+            let merged = match std::env::var("LD_LIBRARY_PATH") {
+                Ok(existing) if !existing.is_empty() => format!("{lib_path}:{existing}"),
+                _ => lib_path,
+            };
+            cmd.env("LD_LIBRARY_PATH", merged);
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let lib_dir = runtime_root.join("lib");
+        if lib_dir.is_dir() {
+            let lib_path = lib_dir.to_string_lossy().to_string();
+            let merged = match std::env::var("DYLD_LIBRARY_PATH") {
+                Ok(existing) if !existing.is_empty() => format!("{lib_path}:{existing}"),
+                _ => lib_path,
+            };
+            cmd.env("DYLD_LIBRARY_PATH", merged);
+        }
+    }
+}
+
+pub fn runtime_root_for(binary: &Path) -> PathBuf {
+    binary
+        .parent()
+        .map(|p| p.to_path_buf())
+        .unwrap_or_else(|| PathBuf::from("."))
+}

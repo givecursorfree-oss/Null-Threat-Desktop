@@ -3,6 +3,7 @@
 use null_threat::commands::{self, AppState};
 use null_threat::db::Database;
 use null_threat::setup;
+use null_threat::tray;
 use null_threat::watcher::FileWatcher;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -79,6 +80,8 @@ fn main() {
                 clamav_runtime_dir: clamav_runtime_dir.clone(),
                 resource_dir,
             });
+
+            tray::setup(app)?;
 
             Ok(())
         })
