@@ -4,7 +4,6 @@ import { listen } from "@tauri-apps/api/event";
 import { isTauri } from "@tauri-apps/api/core";
 import {
   isPermissionGranted,
-  onAction,
   requestPermission,
 } from "@tauri-apps/plugin-notification";
 import { useScanStore } from "../store/scanStore";
@@ -105,7 +104,7 @@ export function useAppInit() {
       }
     });
 
-    const unlistenNotification = onAction(() => {
+    const unlistenNotification = listen("notification-opened", () => {
       navigate("/scan");
     });
 
@@ -113,7 +112,7 @@ export function useAppInit() {
       unlistenComplete.then((fn) => fn());
       unlistenDetected.then((fn) => fn());
       unlistenProgress.then((fn) => fn());
-      unlistenNotification.then((listener) => listener.unregister());
+      unlistenNotification.then((fn) => fn());
     };
   }, [
     navigate,

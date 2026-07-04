@@ -27,6 +27,10 @@ rand = "0.8"
 csv = "1"
 ureq = { version = "2", features = ["tls"] }
 
+[target.'cfg(windows)'.dependencies]
+tauri-winrt-notification = "0.7"
+windows = { version = "0.61", features = ["Win32_UI_Shell"] }
+
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]

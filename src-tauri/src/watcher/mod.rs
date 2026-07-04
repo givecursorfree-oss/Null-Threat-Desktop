@@ -1,11 +1,16 @@
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 use tokio::sync::mpsc;
 
 use crate::db::Database;
 use crate::scanner;
+
+const SCAN_DEBOUNCE: Duration = Duration::from_secs(5);
+const SCAN_COOLDOWN: Duration = Duration::from_secs(60);
 
 pub struct FileWatcher {
     watcher: Mutex<Option<RecommendedWatcher>>,
@@ -17,6 +22,46 @@ pub struct FileWatcher {
 struct FileDetectedEvent {
     path: String,
     event_type: String,
+}
+
+struct ScanCoordinator {
+    generations: HashMap<String, u64>,
+    in_flight: HashSet<String>,
+    last_scanned: HashMap<String, Instant>,
+}
+
+impl ScanCoordinator {
+    fn new() -> Self {
+        Self {
+            generations: HashMap::new(),
+            in_flight: HashSet::new(),
+            last_scanned: HashMap::new(),
+        }
+    }
+
+    fn bump_generation(&mut self, path: &str) -> u64 {
+        let next = self.generations.get(path).copied().unwrap_or(0) + 1;
+        self.generations.insert(path.to_string(), next);
+        next
+    }
+
+    fn should_skip_after_debounce(&self, path: &str, generation: u64) -> bool {
+        self.generations.get(path).copied() != Some(generation)
+            || self.in_flight.contains(path)
+            || self
+                .last_scanned
+                .get(path)
+                .is_some_and(|scanned_at| scanned_at.elapsed() < SCAN_COOLDOWN)
+    }
+
+    fn mark_scan_started(&mut self, path: &str) {
+        self.in_flight.insert(path.to_string());
+    }
+
+    fn mark_scan_finished(&mut self, path: &str) {
+        self.in_flight.remove(path);
+        self.last_scanned.insert(path.to_string(), Instant::now());
+    }
 }
 
 impl FileWatcher {
@@ -84,51 +129,63 @@ impl FileWatcher {
 
         let app_handle = app.clone();
         let db_clone = db.clone();
-
-        let debounce: Arc<Mutex<std::collections::HashSet<String>>> =
-            Arc::new(Mutex::new(std::collections::HashSet::new()));
+        let coordinator = Arc::new(Mutex::new(ScanCoordinator::new()));
 
         tauri::async_runtime::spawn(async move {
             while let Some(path) = rx.recv().await {
                 let path_str = path.to_string_lossy().to_string();
-
-                {
-                    let set = debounce.lock().unwrap();
-                    if set.contains(&path_str) {
-                        continue;
-                    }
-                }
-                debounce.lock().unwrap().insert(path_str.clone());
-
-                if let Err(e) = app_handle.emit(
-                    "file-detected",
-                    FileDetectedEvent {
-                        path: path_str.clone(),
-                        event_type: "auto_scan".into(),
-                    },
-                ) {
-                    log::warn!("Failed to emit file-detected: {e}");
-                }
+                let generation = {
+                    let mut state = coordinator.lock().unwrap();
+                    state.bump_generation(&path_str)
+                };
 
                 let app_for_scan = app_handle.clone();
                 let db_for_scan = db_clone.clone();
                 let rules = rules_dir.clone();
                 let clamav_db = clamav_db_dir.clone();
                 let clamav_runtime = clamav_runtime_dir.clone();
-                let p = path_str.clone();
+                let coordinator_for_scan = coordinator.clone();
+                let scan_path = path_str.clone();
 
                 tauri::async_runtime::spawn(async move {
-                    match scanner::run_scan_pipeline(
+                    tokio::time::sleep(SCAN_DEBOUNCE).await;
+
+                    let should_scan = {
+                        let state = coordinator_for_scan.lock().unwrap();
+                        !state.should_skip_after_debounce(&scan_path, generation)
+                    };
+
+                    if !should_scan {
+                        return;
+                    }
+
+                    coordinator_for_scan
+                        .lock()
+                        .unwrap()
+                        .mark_scan_started(&scan_path);
+
+                    if let Err(e) = app_for_scan.emit(
+                        "file-detected",
+                        FileDetectedEvent {
+                            path: scan_path.clone(),
+                            event_type: "auto_scan".into(),
+                        },
+                    ) {
+                        log::warn!("Failed to emit file-detected: {e}");
+                    }
+
+                    let scan_result = scanner::run_scan_pipeline(
                         &app_for_scan,
-                        &p,
+                        &scan_path,
                         &db_for_scan,
                         &rules,
                         &clamav_db,
                         Some(&clamav_runtime),
                         "auto_scan",
                     )
-                    .await
-                    {
+                    .await;
+
+                    match scan_result {
                         Ok(result) => {
                             let filename = &result.filename;
                             let _ = db_for_scan.insert_scan_record(
@@ -143,16 +200,14 @@ impl FileWatcher {
                             );
                         }
                         Err(e) => {
-                            log::error!("Auto-scan failed for {p}: {e}");
+                            log::error!("Auto-scan failed for {scan_path}: {e}");
                         }
                     }
-                });
 
-                let debounce_clone = debounce.clone();
-                let debounce_path = path_str;
-                tauri::async_runtime::spawn(async move {
-                    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-                    debounce_clone.lock().unwrap().remove(&debounce_path);
+                    coordinator_for_scan
+                        .lock()
+                        .unwrap()
+                        .mark_scan_finished(&scan_path);
                 });
             }
         });

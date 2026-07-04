@@ -40,6 +40,9 @@ fn main() {
             setup::ensure_clamav_runtime(&clamav_runtime_dir, resource_dir.as_deref());
             setup::copy_bundled_clamav_db(&clamav_db_dir, resource_clamav);
 
+            #[cfg(windows)]
+            null_threat::notifications::configure_windows(app.config().identifier.as_str());
+
             let _ = app.notification().request_permission();
 
             let watcher = Arc::new(FileWatcher::new());
