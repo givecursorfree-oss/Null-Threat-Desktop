@@ -35,7 +35,30 @@ fn copy_yara_rules_for_bundle() {
     }
 }
 
+fn ensure_exiftool_bundle_dirs() {
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+
+    #[cfg(target_os = "windows")]
+    let dir = manifest_dir.join("binaries/windows/exiftool_files");
+    #[cfg(target_os = "linux")]
+    let dir = manifest_dir.join("binaries/linux/exiftool_lib");
+    #[cfg(target_os = "macos")]
+    let dir = manifest_dir.join("binaries/macos/exiftool_lib");
+    #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+    return;
+
+    if dir.is_dir() {
+        return;
+    }
+
+    // Tauri resource globs must match at least one file; create a placeholder when
+    // scanner setup has not been run yet (local dev). CI runs setup before build.
+    fs::create_dir_all(&dir).ok();
+    let _ = fs::write(dir.join(".gitkeep"), b"");
+}
+
 fn main() {
     copy_yara_rules_for_bundle();
+    ensure_exiftool_bundle_dirs();
     tauri_build::build();
 }

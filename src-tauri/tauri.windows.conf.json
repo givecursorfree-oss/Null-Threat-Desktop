@@ -7,7 +7,7 @@
       "resources/clamav/*",
       "binaries/windows/*",
       "binaries/windows/certs/*",
-      "binaries/windows/exiftool_files/**"
+      "binaries/windows/exiftool_files/**/*"
     ]
   }
 }

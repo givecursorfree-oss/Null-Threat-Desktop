@@ -7,7 +7,7 @@
       "resources/clamav/*",
       "binaries/macos/*",
       "binaries/macos/lib/*",
-      "binaries/macos/exiftool_lib/**"
+      "binaries/macos/exiftool_lib/**/*"
     ]
   }
 }
