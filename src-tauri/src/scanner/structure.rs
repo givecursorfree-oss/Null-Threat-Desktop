@@ -89,10 +89,10 @@ fn cap(mut anomalies: Vec<String>) -> Vec<String> {
 
 // ── ISO Base Media File Format (MP4/MOV) ──────────────────────────────────
 
-/// Container boxes whose children are themselves boxes.
+/// Container boxes whose children are nested ISO-BMFF boxes (not binary sample tables).
 const CONTAINER_BOXES: &[&str] = &[
     "moov", "trak", "mdia", "minf", "stbl", "dinf", "edts", "udta", "mvex",
-    "moof", "traf", "mfra", "skip", "meta", "ipro", "sinf", "stsd",
+    "moof", "traf", "mfra", "meta", "ipro", "sinf", "schi",
 ];
 
 fn parse_iso_bmff(path: &Path, anomalies: &mut Vec<String>) {
@@ -161,6 +161,11 @@ fn walk_boxes(
         let box_type = &header[4..8];
 
         if !is_sane_atom_type(box_type) {
+            // Inside a container, binary codec data (e.g. H.264 NAL 0x00000001 in stsd/avcC)
+            // is normal — stop walking this branch without flagging the file.
+            if depth > 0 {
+                break;
+            }
             anomalies.push(format!(
                 "Non-printable/garbage atom type at offset {pos}: {}",
                 escape_type(box_type)

@@ -63,6 +63,70 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
+fn scanner_tool_name(base: &str) -> String {
+    #[cfg(target_os = "windows")]
+    {
+        format!("{base}.exe")
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        base.to_string()
+    }
+}
+
+fn exiftool_support_dir() -> &'static str {
+    #[cfg(target_os = "windows")]
+    {
+        "exiftool_files"
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        "exiftool_lib"
+    }
+}
+
+/// Copy bundled scanner tools into app data when missing (yara, ffprobe, ffmpeg, exiftool).
+/// Runs on every startup so upgrades pick up newly bundled tools without reinstall.
+fn sync_scanner_tools(dest: &Path, resource_dir: Option<&Path>) {
+    let Some(source) = clamav_runtime_sources(resource_dir)
+        .into_iter()
+        .find(|s| s.is_dir())
+    else {
+        return;
+    };
+
+    std::fs::create_dir_all(dest).ok();
+
+    for tool in ["yara", "ffprobe", "ffmpeg", "exiftool"] {
+        let name = scanner_tool_name(tool);
+        let src = source.join(&name);
+        let dst = dest.join(&name);
+        if src.is_file() && !dst.is_file() {
+            if std::fs::copy(&src, &dst).is_ok() {
+                log::info!("Installed bundled {tool} at {}", dst.display());
+            }
+        }
+    }
+
+    let support = exiftool_support_dir();
+    let src_support = source.join(support);
+    let dst_support = dest.join(support);
+    if src_support.is_dir() && !dst_support.is_dir() {
+        if copy_dir_recursive(&src_support, &dst_support).is_ok() {
+            log::info!("Installed bundled {support} at {}", dst_support.display());
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let src_lib = source.join("lib");
+        let dst_lib = dest.join("lib");
+        if src_lib.is_dir() && !dst_lib.is_dir() {
+            let _ = copy_dir_recursive(&src_lib, &dst_lib);
+        }
+    }
+}
+
 fn clamav_runtime_sources(resource_dir: Option<&Path>) -> Vec<PathBuf> {
     let platform_dir = {
         #[cfg(target_os = "windows")]
@@ -101,9 +165,12 @@ fn clamscan_name() -> &'static str {
     }
 }
 
-/// Installs a complete ClamAV runtime into app data.
+/// Installs bundled scanner runtimes (ClamAV + YARA/ffprobe/ffmpeg/exiftool) into app data.
 pub fn ensure_clamav_runtime(dest: &Path, resource_dir: Option<&Path>) -> bool {
     std::fs::create_dir_all(dest).ok();
+
+    // Always merge newly bundled tools (exiftool, ffmpeg, etc.) even when ClamAV already exists.
+    sync_scanner_tools(dest, resource_dir);
 
     let already_valid = {
         let has_bin = dest.join(clamscan_name()).is_file();

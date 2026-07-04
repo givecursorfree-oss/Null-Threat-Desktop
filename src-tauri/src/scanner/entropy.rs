@@ -42,3 +42,29 @@ pub fn calculate_entropy(path: &Path) -> std::io::Result<f64> {
 pub fn is_high_entropy(entropy: f64) -> bool {
     entropy > 7.2
 }
+
+/// Compressed audio/video/images are expected to have high Shannon entropy.
+/// Flagging them produces false positives on every normal media file.
+pub fn is_high_entropy_for_file(path: &Path, entropy: f64) -> bool {
+    let ext = path
+        .extension()
+        .map(|e| e.to_string_lossy().to_lowercase())
+        .unwrap_or_default();
+
+    const EXPECTED_HIGH_ENTROPY: &[&str] = &[
+        // Video
+        "mp4", "m4v", "mov", "mkv", "webm", "avi", "wmv", "flv", "mpeg", "mpg", "3gp", "m4a",
+        // Audio
+        "mp3", "aac", "ogg", "flac", "wav", "wma",
+        // Compressed images
+        "jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "avif",
+        // Archives (also high entropy)
+        "zip", "gz", "bz2", "xz", "7z", "rar",
+    ];
+
+    if EXPECTED_HIGH_ENTROPY.contains(&ext.as_str()) {
+        return false;
+    }
+
+    is_high_entropy(entropy)
+}

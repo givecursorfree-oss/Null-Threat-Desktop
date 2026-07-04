@@ -221,7 +221,7 @@ pub async fn run_deep_analysis(path: &Path, runtime_dir: Option<&Path>) -> DeepA
 
     DeepAnalysisResult {
         entropy: entropy_val,
-        high_entropy: entropy::is_high_entropy(entropy_val),
+        high_entropy: entropy::is_high_entropy_for_file(path, entropy_val),
         magic_bytes: magic,
         video_analysis: video_result,
         structure: structure_result,

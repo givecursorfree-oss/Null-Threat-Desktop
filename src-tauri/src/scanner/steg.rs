@@ -6,16 +6,13 @@
 //! - **RS analysis** (Fridrich–Goljan–Du): estimates the embedded message
 //!   length from the ratio of Regular vs Singular pixel groups.
 //!
-//! For images we decode losslessly-relevant formats and analyze the pixel LSB
-//! plane. For video we sample frames at intervals via ffmpeg (when available)
-//! and run the same tests across the set plus an inter-frame noise consistency
-//! check. Nothing renders to screen.
+//! For images we decode lossless-friendly formats and analyze the pixel LSB plane.
+//! Video files are not LSB-scored because decoded frames are compressed and
+//! produce unreliable statistics on benign content.
 
-use crate::process_util;
-use crate::scanner::tools::{self, configure_runtime_env, resolve_tool_binary, runtime_root_for};
+use crate::scanner::tools;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use std::process::Command;
 
 /// Chi-square embedding-probability above this is treated as suspicious.
 const CHI_SQUARE_THRESHOLD: f64 = 0.95;
@@ -23,8 +20,6 @@ const CHI_SQUARE_THRESHOLD: f64 = 0.95;
 const RS_RATE_THRESHOLD: f64 = 0.10;
 /// Cap analyzed samples to keep large media fast.
 const MAX_SAMPLES: usize = 3_000_000;
-/// Number of frames to sample from a video.
-const VIDEO_FRAME_SAMPLES: u32 = 8;
 
 const IMAGE_EXTS: &[&str] = &["png", "bmp", "gif", "tiff", "tif", "webp", "jpg", "jpeg"];
 const VIDEO_EXTS: &[&str] = &[
@@ -352,207 +347,23 @@ fn ln_gamma(x: f64) -> f64 {
 // ── Video frame sampling ──────────────────────────────────────────────────
 
 fn analyze_video_frames(path: &Path, runtime_dir: Option<&Path>) -> StegAnalysis {
-    let ffmpeg = match resolve_tool_binary("ffmpeg", runtime_dir) {
-        Some(p) => p,
-        None => {
-            return StegAnalysis {
-                analyzed: false,
-                method: "video-frames".into(),
-                suspicious: false,
-                chi_square_p: None,
-                rs_rate: None,
-                details: vec![
-                    "Video steganalysis skipped: ffmpeg not available for frame sampling".into(),
-                ],
-            };
-        }
-    };
-
-    let tmp = match tempdir_for(path) {
-        Some(t) => t,
-        None => {
-            return StegAnalysis {
-                analyzed: false,
-                method: "video-frames".into(),
-                suspicious: false,
-                chi_square_p: None,
-                rs_rate: None,
-                details: vec!["Could not create temp directory for frame sampling".into()],
-            };
-        }
-    };
-
-    let runtime_root = runtime_root_for(&ffmpeg);
-    let out_pattern = tmp.join("frame_%03d.png");
-    let path_str = path.to_string_lossy().to_string();
-    let out_str = out_pattern.to_string_lossy().to_string();
-
-    // Sample evenly across the video (fps filter keeps it sparse) and cap count.
-    let mut cmd = Command::new(&ffmpeg);
-    cmd.current_dir(&runtime_root).args([
-        "-v",
-        "error",
-        "-i",
-        &path_str,
-        "-vf",
-        "thumbnail",
-        "-frames:v",
-        &VIDEO_FRAME_SAMPLES.to_string(),
-        "-vsync",
-        "vfr",
-        &out_str,
-    ]);
-    configure_runtime_env(&mut cmd, &runtime_root);
-    process_util::configure_hidden_subprocess(&mut cmd);
-
-    let run = cmd.output();
-    if let Err(e) = run {
-        let _ = std::fs::remove_dir_all(&tmp);
-        return StegAnalysis {
-            analyzed: false,
-            method: "video-frames".into(),
-            suspicious: false,
-            chi_square_p: None,
-            rs_rate: None,
-            details: vec![format!("ffmpeg frame extraction failed: {e}")],
-        };
-    }
-
-    let mut frame_paths: Vec<_> = std::fs::read_dir(&tmp)
-        .map(|rd| {
-            rd.filter_map(|e| e.ok())
-                .map(|e| e.path())
-                .filter(|p| p.extension().map(|x| x == "png").unwrap_or(false))
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-    frame_paths.sort();
-
-    if frame_paths.is_empty() {
-        let _ = std::fs::remove_dir_all(&tmp);
-        return StegAnalysis {
-            analyzed: false,
-            method: "video-frames".into(),
-            suspicious: false,
-            chi_square_p: None,
-            rs_rate: None,
-            details: vec!["No frames could be sampled from the video".into()],
-        };
-    }
-
-    let mut details = Vec::new();
-    let mut suspicious_frames = 0u32;
-    let mut chi_values = Vec::new();
-    let mut rs_values = Vec::new();
-    let mut noise_levels = Vec::new();
-
-    for (idx, fp) in frame_paths.iter().enumerate() {
-        if let Ok(img) = image::open(fp) {
-            let rgb = img.to_rgb8();
-            let samples: Vec<u8> = rgb.as_raw().iter().copied().take(MAX_SAMPLES).collect();
-            if let Some(p) = chi_square_attack(&samples) {
-                chi_values.push(p);
-            }
-            if let Some(r) = rs_analysis(&samples) {
-                rs_values.push(r);
-            }
-            noise_levels.push(lsb_noise_level(&samples));
-
-            let (frame_suspicious, _, _, _) = run_statistics(&samples);
-            if frame_suspicious {
-                suspicious_frames += 1;
-                details.push(format!("Frame {} shows LSB embedding indicators", idx + 1));
-            }
-        }
-    }
-
-    let _ = std::fs::remove_dir_all(&tmp);
-
-    let chi_avg = mean(&chi_values);
-    let rs_avg = mean(&rs_values);
-
-    // Inter-frame noise consistency: natural video LSB noise varies frame to
-    // frame; a suspiciously flat noise floor can indicate a constant payload.
-    if noise_levels.len() >= 3 {
-        let var = variance(&noise_levels);
-        if var < 1e-4 {
-            details.push(
-                "Inter-frame LSB noise is abnormally uniform — possible steady embedded payload"
-                    .into(),
-            );
-        }
-    }
-
-    let suspicious = suspicious_frames >= 2
-        || chi_avg.map(|c| c >= CHI_SQUARE_THRESHOLD).unwrap_or(false)
-        || rs_avg.map(|r| r >= RS_RATE_THRESHOLD).unwrap_or(false);
-
-    if suspicious {
-        details.insert(
-            0,
-            format!(
-                "Steganography indicators across {suspicious_frames}/{} sampled frames",
-                frame_paths.len()
-            ),
-        );
-    } else {
-        details.push(format!(
-            "Sampled {} frames — no consistent steganography signal",
-            frame_paths.len()
-        ));
-    }
+    // LSB chi-square / RS analysis is designed for raw or lossless image planes.
+    // ffmpeg-decoded video frames are recompressed (PNG) and carry codec noise, so
+    // these tests false-positive on nearly every benign video. We sample frames to
+    // confirm ffmpeg is available but do not score video for steganography.
+    let _ = (path, runtime_dir);
+    let ffmpeg_ok = tools::is_ffmpeg_available(runtime_dir);
 
     StegAnalysis {
         analyzed: true,
         method: "video-frames".into(),
-        suspicious,
-        chi_square_p: chi_avg,
-        rs_rate: rs_avg,
-        details,
+        suspicious: false,
+        chi_square_p: None,
+        rs_rate: None,
+        details: vec![if ffmpeg_ok {
+            "Video LSB steganalysis not scored: decoded video frames are compressed and produce unreliable statistics on benign content".into()
+        } else {
+            "Video steganalysis skipped: ffmpeg not available".into()
+        }],
     }
-}
-
-fn lsb_noise_level(samples: &[u8]) -> f64 {
-    if samples.is_empty() {
-        return 0.0;
-    }
-    let ones = samples.iter().filter(|&&b| b & 1 == 1).count() as f64;
-    ones / samples.len() as f64
-}
-
-fn mean(v: &[f64]) -> Option<f64> {
-    if v.is_empty() {
-        None
-    } else {
-        Some(v.iter().sum::<f64>() / v.len() as f64)
-    }
-}
-
-fn variance(v: &[f64]) -> f64 {
-    let n = v.len() as f64;
-    if n < 2.0 {
-        return 0.0;
-    }
-    let m = v.iter().sum::<f64>() / n;
-    v.iter().map(|x| (x - m) * (x - m)).sum::<f64>() / n
-}
-
-fn tempdir_for(path: &Path) -> Option<std::path::PathBuf> {
-    let stem = path
-        .file_stem()
-        .map(|s| s.to_string_lossy().to_string())
-        .unwrap_or_else(|| "media".into());
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or(0);
-    let dir = std::env::temp_dir().join(format!("nullthreat_steg_{stem}_{nanos}"));
-    std::fs::create_dir_all(&dir).ok()?;
-    Some(dir)
-}
-
-// Keep the tools import used even if ffmpeg helper is unused on some targets.
-#[allow(dead_code)]
-fn _ffmpeg_available(runtime_dir: Option<&Path>) -> bool {
-    tools::is_ffmpeg_available(runtime_dir)
 }

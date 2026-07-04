@@ -65,10 +65,6 @@ pub fn is_ffmpeg_available(runtime_dir: Option<&Path>) -> bool {
     resolve_tool_binary("ffmpeg", runtime_dir).is_some()
 }
 
-pub fn is_exiftool_available(runtime_dir: Option<&Path>) -> bool {
-    resolve_tool_binary("exiftool", runtime_dir).is_some()
-}
-
 /// Ensures bundled shared libraries are visible to subprocesses on Unix.
 pub fn configure_runtime_env(cmd: &mut Command, runtime_root: &Path) {
     #[cfg(target_os = "linux")]
@@ -104,9 +100,35 @@ pub fn configure_runtime_env(cmd: &mut Command, runtime_root: &Path) {
 
 pub fn configure_exiftool_env(cmd: &mut Command, runtime_root: &Path) {
     configure_runtime_env(cmd, runtime_root);
-    let perl_lib = runtime_root.join("exiftool_lib");
-    if perl_lib.is_dir() {
-        cmd.env("PERL5LIB", perl_lib);
+
+    #[cfg(target_os = "windows")]
+    {
+        // Windows portable ExifTool expects exiftool_files/ next to exiftool.exe.
+        // cwd is set to runtime_root in metadata.rs so relative lookup works.
+        let _ = runtime_root.join("exiftool_files");
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let perl_lib = runtime_root.join("exiftool_lib");
+        if perl_lib.is_dir() {
+            cmd.env("PERL5LIB", perl_lib);
+        }
+    }
+}
+
+pub fn is_exiftool_available(runtime_dir: Option<&Path>) -> bool {
+    let Some(bin) = resolve_tool_binary("exiftool", runtime_dir) else {
+        return false;
+    };
+    let root = runtime_root_for(&bin);
+    #[cfg(target_os = "windows")]
+    {
+        return root.join("exiftool_files").is_dir();
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        return root.join("exiftool_lib").is_dir() || bin.is_file();
     }
 }
 
