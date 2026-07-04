@@ -21,17 +21,17 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install Linux build + ClamAV dependencies
+      - name: Install Linux build + scanner dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
             patchelf build-essential curl wget file libssl-dev \
-            clamav clamav-freshclam patchelf yara ffmpeg
+            clamav clamav-freshclam patchelf yara ffmpeg perl
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Bundle ClamAV for Linux
+      - name: Bundle scanner tools for Linux
         run: |
           chmod +x scripts/setup-clamav-linux.sh scripts/setup-yara-ffprobe-linux.sh
           ./scripts/setup-clamav-linux.sh
@@ -39,6 +39,8 @@ jobs:
           ./src-tauri/binaries/linux/clamscan --version
           ./src-tauri/binaries/linux/yara --version
           ./src-tauri/binaries/linux/ffprobe -version
+          ./src-tauri/binaries/linux/ffmpeg -version
+          PERL5LIB=src-tauri/binaries/linux/exiftool_lib ./src-tauri/binaries/linux/exiftool -ver
           if [ -f src-tauri/resources/clamav/main.cvd ]; then
             echo "test" > /tmp/null-threat-clam-test.txt
             ./src-tauri/binaries/linux/clamscan --database=src-tauri/resources/clamav /tmp/null-threat-clam-test.txt
@@ -72,8 +74,8 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Install ClamAV via Homebrew
-        run: brew install clamav yara ffmpeg
+      - name: Install scanner tools via Homebrew
+        run: brew install clamav yara ffmpeg perl
 
       - name: Bundle scanner tools for macOS
         run: |
@@ -83,6 +85,8 @@ jobs:
           ./src-tauri/binaries/macos/clamscan --version
           ./src-tauri/binaries/macos/yara --version
           ./src-tauri/binaries/macos/ffprobe -version
+          ./src-tauri/binaries/macos/ffmpeg -version
+          PERL5LIB=src-tauri/binaries/macos/exiftool_lib ./src-tauri/binaries/macos/exiftool -ver
           if [ -f src-tauri/resources/clamav/main.cvd ]; then
             echo "test" > /tmp/null-threat-clam-test.txt
             ./src-tauri/binaries/macos/clamscan --database=src-tauri/resources/clamav /tmp/null-threat-clam-test.txt
@@ -128,6 +132,8 @@ jobs:
           .\src-tauri\binaries\windows\clamscan.exe --version
           .\src-tauri\binaries\windows\yara.exe --version
           .\src-tauri\binaries\windows\ffprobe.exe -version
+          .\src-tauri\binaries\windows\ffmpeg.exe -version
+          .\src-tauri\binaries\windows\exiftool.exe -ver
           Get-ChildItem src-tauri\resources\clamav\
 
       - name: Build Windows app

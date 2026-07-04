@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { formatAppDate } from "../lib/datetime";
 import type { ScanHistoryEntry, Verdict } from "../types";
 
 const PAGE_SIZE = 15;
@@ -144,10 +145,7 @@ export default function History() {
 
               <div className="mt-2 flex items-center justify-between gap-3 sm:mt-0 sm:contents">
                 <span className="text-xs text-muted-foreground">
-                  {new Date(entry.date).toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                  })}
+                  {formatAppDate(entry.date, { month: "short", day: "numeric" })}
                 </span>
                 <span
                   className={cn(

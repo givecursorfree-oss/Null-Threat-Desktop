@@ -1,5 +1,6 @@
 use super::models::*;
 use super::Database;
+use chrono::Utc;
 use rusqlite::{params, Result as SqliteResult};
 
 impl Database {
@@ -18,10 +19,11 @@ impl Database {
         engine_results: &str,
     ) -> SqliteResult<i64> {
         let conn = self.conn.lock().unwrap();
+        let timestamp = Utc::now().to_rfc3339();
         conn.execute(
-            "INSERT INTO scan_history (filename, filepath, sha256, risk_score, verdict, threat_name, action_taken, engine_results)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-            params![filename, filepath, sha256, risk_score, verdict, threat_name, action_taken, engine_results],
+            "INSERT INTO scan_history (filename, filepath, sha256, timestamp, risk_score, verdict, threat_name, action_taken, engine_results)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            params![filename, filepath, sha256, timestamp, risk_score, verdict, threat_name, action_taken, engine_results],
         )?;
         Ok(conn.last_insert_rowid())
     }
@@ -60,10 +62,11 @@ impl Database {
         file_size: u64,
     ) -> SqliteResult<i64> {
         let conn = self.conn.lock().unwrap();
+        let scan_date = Utc::now().to_rfc3339();
         conn.execute(
-            "INSERT INTO quarantine_entries (original_path, quarantine_path, threat_name, risk_score, file_size)
-             VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![original_path, quarantine_path, threat_name, risk_score, file_size as i64],
+            "INSERT INTO quarantine_entries (original_path, quarantine_path, threat_name, risk_score, file_size, scan_date)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![original_path, quarantine_path, threat_name, risk_score, file_size as i64, scan_date],
         )?;
         Ok(conn.last_insert_rowid())
     }

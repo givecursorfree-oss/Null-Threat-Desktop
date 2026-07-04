@@ -2,6 +2,9 @@ pub mod clamav;
 pub mod deep;
 pub mod entropy;
 pub mod hash;
+pub mod metadata;
+pub mod steg;
+pub mod structure;
 pub mod tools;
 pub mod video;
 pub mod yara;
@@ -43,6 +46,9 @@ pub struct EngineResults {
     pub magic_score: u32,
     pub entropy_score: u32,
     pub video_score: u32,
+    pub structure_score: u32,
+    pub metadata_score: u32,
+    pub steg_score: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -109,6 +115,24 @@ pub async fn run_scan_pipeline(
                 is_video: false,
                 anomalies: vec![],
             },
+            structure: structure::StructureAnalysis {
+                applicable: false,
+                container: "none".into(),
+                anomalies: vec![],
+            },
+            metadata: metadata::MetadataAnalysis {
+                scanned: false,
+                tool: "native".into(),
+                anomalies: vec![],
+            },
+            steganalysis: steg::StegAnalysis {
+                analyzed: false,
+                method: "none".into(),
+                suspicious: false,
+                chi_square_p: None,
+                rs_rate: None,
+                details: vec![],
+            },
         };
         return Ok(ScanResult {
             filepath: file_path.to_string(),
@@ -132,6 +156,9 @@ pub async fn run_scan_pipeline(
                 magic_score: 0,
                 entropy_score: 0,
                 video_score: 0,
+                structure_score: 0,
+                metadata_score: 0,
+                steg_score: 0,
             },
             findings: vec![],
             scan_source: scan_source.to_string(),
@@ -162,6 +189,9 @@ pub async fn run_scan_pipeline(
     let mut magic_score: u32 = 0;
     let mut entropy_score: u32 = 0;
     let mut video_score: u32 = 0;
+    let mut structure_score: u32 = 0;
+    let mut metadata_score: u32 = 0;
+    let mut steg_score: u32 = 0;
     let mut threat_name: Option<String> = None;
     let mut findings: Vec<String> = Vec::new();
 
@@ -224,7 +254,48 @@ pub async fn run_scan_pipeline(
         video_score = 35;
     }
 
-    let total_raw = hash_score + clam_score + yara_score + magic_score + entropy_score + video_score;
+    // ── Stage 1: Structure parser ────────────────────────────────
+    if !deep_analysis.structure.anomalies.is_empty() {
+        structure_score = 35;
+        for anomaly in &deep_analysis.structure.anomalies {
+            findings.push(format!("Structure ({}): {anomaly}", deep_analysis.structure.container));
+        }
+    }
+
+    // ── Stage 2: Metadata scanner ────────────────────────────────
+    if !deep_analysis.metadata.anomalies.is_empty() {
+        // Encoded executables / command injection in metadata are high signal.
+        let severe = deep_analysis.metadata.anomalies.iter().any(|a| {
+            a.contains("executable") || a.contains("script/command") || a.contains("Shell/command")
+        });
+        metadata_score = if severe { 55 } else { 30 };
+        for anomaly in &deep_analysis.metadata.anomalies {
+            findings.push(format!("Metadata: {anomaly}"));
+        }
+    }
+
+    // ── Stage 3: Steganalysis ────────────────────────────────────
+    if deep_analysis.steganalysis.suspicious {
+        steg_score = 45;
+        if threat_name.is_none() {
+            threat_name = Some("Possible steganography (hidden payload)".into());
+        }
+    }
+    for detail in &deep_analysis.steganalysis.details {
+        if deep_analysis.steganalysis.suspicious || detail.contains("skipped") {
+            findings.push(format!("Steganalysis: {detail}"));
+        }
+    }
+
+    let total_raw = hash_score
+        + clam_score
+        + yara_score
+        + magic_score
+        + entropy_score
+        + video_score
+        + structure_score
+        + metadata_score
+        + steg_score;
     let risk_score = total_raw.min(100);
 
     let verdict = if risk_score >= 81 {
@@ -244,6 +315,9 @@ pub async fn run_scan_pipeline(
         magic_score,
         entropy_score,
         video_score,
+        structure_score,
+        metadata_score,
+        steg_score,
     };
 
     emit_progress(app, "complete", 100, &format!("Scan complete – {verdict}"));

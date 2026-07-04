@@ -64,6 +64,8 @@ export interface DependencyStatus {
   clamavAvailable: boolean;
   yaraAvailable: boolean;
   ffprobeAvailable: boolean;
+  ffmpegAvailable: boolean;
+  exiftoolAvailable: boolean;
   yaraRulesFound: number;
   dbConnected: boolean;
   malwarebazaarHashCount: number;

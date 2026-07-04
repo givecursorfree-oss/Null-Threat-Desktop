@@ -38,18 +38,25 @@ src-tauri/target/
 
 # Bundled ClamAV artifacts (populate via scripts/setup-clamav*.sh|ps1)
 src-tauri/binaries/**/*.exe
+src-tauri/binaries/windows/exiftool_files/*
 src-tauri/binaries/linux/clamscan
 src-tauri/binaries/linux/freshclam
 src-tauri/binaries/linux/yara
 src-tauri/binaries/linux/ffprobe
+src-tauri/binaries/linux/ffmpeg
+src-tauri/binaries/linux/exiftool
+src-tauri/binaries/linux/exiftool_lib/*
+!src-tauri/binaries/linux/exiftool_lib/.gitkeep
 src-tauri/binaries/linux/lib/*
 !src-tauri/binaries/linux/lib/.gitkeep
 src-tauri/binaries/macos/clamscan
 src-tauri/binaries/macos/freshclam
 src-tauri/binaries/macos/yara
 src-tauri/binaries/macos/ffprobe
-src-tauri/binaries/macos/lib/*
-!src-tauri/binaries/macos/lib/.gitkeep
+src-tauri/binaries/macos/ffmpeg
+src-tauri/binaries/macos/exiftool
+src-tauri/binaries/macos/exiftool_lib/*
+!src-tauri/binaries/macos/exiftool_lib/.gitkeep
 src-tauri/resources/clamav/*.cvd
 src-tauri/resources/clamav/*.cld
 src-tauri/resources/clamav/*.cvdb

@@ -31,6 +31,16 @@ interface RustScanResult {
     high_entropy: boolean;
     magic_bytes: { mismatch: boolean; detected_type: string; expected_extension?: string };
     video_analysis: { anomalies: string[] };
+    structure: { applicable: boolean; container: string; anomalies: string[] };
+    metadata: { scanned: boolean; tool: string; anomalies: string[] };
+    steganalysis: {
+      analyzed: boolean;
+      method: string;
+      suspicious: boolean;
+      chi_square_p?: number | null;
+      rs_rate?: number | null;
+      details: string[];
+    };
   };
   engine_results: {
     hash_score: number;
@@ -39,6 +49,9 @@ interface RustScanResult {
     magic_score: number;
     entropy_score: number;
     video_score: number;
+    structure_score: number;
+    metadata_score: number;
+    steg_score: number;
   };
   findings: string[];
   scan_source?: string;
@@ -65,6 +78,8 @@ interface RustDependencyStatus {
   clamav_available: boolean;
   yara_available: boolean;
   ffprobe_available: boolean;
+  ffmpeg_available: boolean;
+  exiftool_available: boolean;
   yara_rules_found: number;
   db_connected: boolean;
   malwarebazaar_hash_count: number;
@@ -189,6 +204,30 @@ function buildEngineDetails(raw: RustScanResult): EngineResult[] {
   if (raw.deep_analysis.video_analysis.anomalies.length > 0) {
     deepFlags.push(...raw.deep_analysis.video_analysis.anomalies);
   }
+  if (raw.deep_analysis.structure?.anomalies?.length > 0) {
+    deepFlags.push(...raw.deep_analysis.structure.anomalies);
+  }
+  if (raw.deep_analysis.metadata?.anomalies?.length > 0) {
+    deepFlags.push(...raw.deep_analysis.metadata.anomalies);
+  }
+  if (raw.deep_analysis.steganalysis?.suspicious) {
+    deepFlags.push(...raw.deep_analysis.steganalysis.details);
+  }
+
+  const deepScore =
+    raw.engine_results.magic_score +
+    raw.engine_results.entropy_score +
+    raw.engine_results.video_score +
+    (raw.engine_results.structure_score ?? 0) +
+    (raw.engine_results.metadata_score ?? 0) +
+    (raw.engine_results.steg_score ?? 0);
+  const deepDetected =
+    raw.deep_analysis.magic_bytes.mismatch ||
+    raw.deep_analysis.high_entropy ||
+    raw.deep_analysis.video_analysis.anomalies.length > 0 ||
+    (raw.deep_analysis.structure?.anomalies?.length ?? 0) > 0 ||
+    (raw.deep_analysis.metadata?.anomalies?.length ?? 0) > 0 ||
+    (raw.deep_analysis.steganalysis?.suspicious ?? false);
 
   return [
     {
@@ -229,14 +268,7 @@ function buildEngineDetails(raw: RustScanResult): EngineResult[] {
     {
       engineName: "Deep Analysis",
       status: "complete",
-      verdict: engineVerdict(
-        raw.engine_results.magic_score +
-          raw.engine_results.entropy_score +
-          raw.engine_results.video_score,
-        raw.deep_analysis.magic_bytes.mismatch ||
-          raw.deep_analysis.high_entropy ||
-          raw.deep_analysis.video_analysis.anomalies.length > 0
-      ),
+      verdict: engineVerdict(deepScore, deepDetected),
       elapsed: 0,
       details: deepFlags.length > 0 ? deepFlags.join("; ") : "No structural anomalies",
     },
@@ -286,6 +318,8 @@ function mapDependencies(raw: RustDependencyStatus): DependencyStatus {
     clamavAvailable: raw.clamav_available,
     yaraAvailable: raw.yara_available,
     ffprobeAvailable: raw.ffprobe_available,
+    ffmpegAvailable: raw.ffmpeg_available,
+    exiftoolAvailable: raw.exiftool_available,
     yaraRulesFound: raw.yara_rules_found,
     dbConnected: raw.db_connected,
     malwarebazaarHashCount: raw.malwarebazaar_hash_count,

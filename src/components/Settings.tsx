@@ -202,6 +202,8 @@ export default function Settings() {
               <li>ClamAV: {deps.clamavAvailable ? "bundled" : "not found"}</li>
               <li>YARA: {deps.yaraAvailable ? "bundled" : "not found"}</li>
               <li>ffprobe: {deps.ffprobeAvailable ? "bundled" : "not found"}</li>
+              <li>ffmpeg: {deps.ffmpegAvailable ? "bundled" : "not found"}</li>
+              <li>exiftool: {deps.exiftoolAvailable ? "bundled" : "not found"}</li>
               <li className={deps.yaraRulesFound === 0 ? "text-amber-300" : undefined}>
                 YARA rules loaded:{" "}
                 {deps.yaraRulesFound > 0

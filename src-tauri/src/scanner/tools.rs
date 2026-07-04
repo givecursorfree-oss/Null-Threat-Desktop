@@ -61,6 +61,14 @@ pub fn is_ffprobe_available(runtime_dir: Option<&Path>) -> bool {
     resolve_tool_binary("ffprobe", runtime_dir).is_some()
 }
 
+pub fn is_ffmpeg_available(runtime_dir: Option<&Path>) -> bool {
+    resolve_tool_binary("ffmpeg", runtime_dir).is_some()
+}
+
+pub fn is_exiftool_available(runtime_dir: Option<&Path>) -> bool {
+    resolve_tool_binary("exiftool", runtime_dir).is_some()
+}
+
 /// Ensures bundled shared libraries are visible to subprocesses on Unix.
 pub fn configure_runtime_env(cmd: &mut Command, runtime_root: &Path) {
     #[cfg(target_os = "linux")]
@@ -92,6 +100,14 @@ pub fn configure_runtime_env(cmd: &mut Command, runtime_root: &Path) {
     // On platforms without bundled shared libs (e.g. Windows) the params are unused.
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     let _ = (cmd, runtime_root);
+}
+
+pub fn configure_exiftool_env(cmd: &mut Command, runtime_root: &Path) {
+    configure_runtime_env(cmd, runtime_root);
+    let perl_lib = runtime_root.join("exiftool_lib");
+    if perl_lib.is_dir() {
+        cmd.env("PERL5LIB", perl_lib);
+    }
 }
 
 pub fn runtime_root_for(binary: &Path) -> PathBuf {

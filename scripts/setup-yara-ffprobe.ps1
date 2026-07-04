@@ -1,11 +1,13 @@
-# Bundles YARA + ffprobe for Windows into src-tauri/binaries/windows
+# Bundles YARA, ffprobe, ffmpeg, and exiftool for Windows into src-tauri/binaries/windows
 # Usage: .\scripts\setup-yara-ffprobe.ps1
 
 $ErrorActionPreference = "Stop"
 
 $YaraVersion = "4.5.2"
 $YaraBuild = "2326"
+$ExifToolVersion = "13.59"
 $FfmpegUrl = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
+$ExifToolUrl = "https://downloads.sourceforge.net/project/exiftool/exiftool-${ExifToolVersion}_64.zip"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Root = Split-Path -Parent $ScriptDir
@@ -39,7 +41,7 @@ Get-ChildItem -Path $YaraExe.DirectoryName -Filter "*.dll" | ForEach-Object {
     Copy-Item -Force $_.FullName (Join-Path $BinDir $_.Name)
 }
 
-Write-Host "Downloading FFmpeg (ffprobe) for Windows x64..."
+Write-Host "Downloading FFmpeg (ffmpeg + ffprobe) for Windows x64..."
 $FfmpegZip = Join-Path $TempDir "ffmpeg-win64.zip"
 Invoke-WebRequest -Uri $FfmpegUrl -OutFile $FfmpegZip -UseBasicParsing
 
@@ -47,16 +49,48 @@ $FfmpegExtract = Join-Path $TempDir "ffmpeg"
 if (Test-Path $FfmpegExtract) { Remove-Item -Recurse -Force $FfmpegExtract }
 Expand-Archive -Path $FfmpegZip -DestinationPath $FfmpegExtract -Force
 
-$FfprobeExe = Get-ChildItem -Path $FfmpegExtract -Recurse -Filter "ffprobe.exe" | Select-Object -First 1
-if (-not $FfprobeExe) { throw "ffprobe.exe not found in FFmpeg archive" }
+$FfmpegBinDir = Get-ChildItem -Path $FfmpegExtract -Recurse -Directory -Filter "bin" | Select-Object -First 1
+if (-not $FfmpegBinDir) { throw "ffmpeg bin directory not found in archive" }
 
-Copy-Item -Force $FfprobeExe.FullName (Join-Path $BinDir "ffprobe.exe")
-Get-ChildItem -Path $FfprobeExe.DirectoryName -Filter "*.dll" | ForEach-Object {
+foreach ($tool in @("ffmpeg.exe", "ffprobe.exe")) {
+    $src = Join-Path $FfmpegBinDir.FullName $tool
+    if (-not (Test-Path $src)) { throw "$tool not found in FFmpeg archive" }
+    Copy-Item -Force $src (Join-Path $BinDir $tool)
+}
+
+Get-ChildItem -Path $FfmpegBinDir.FullName -Filter "*.dll" | ForEach-Object {
     Copy-Item -Force $_.FullName (Join-Path $BinDir $_.Name)
+}
+
+Write-Host "Downloading ExifTool $ExifToolVersion for Windows..."
+$ExifZip = Join-Path $TempDir "exiftool-win.zip"
+Invoke-WebRequest -Uri $ExifToolUrl -OutFile $ExifZip -UseBasicParsing
+
+$ExifExtract = Join-Path $TempDir "exiftool"
+if (Test-Path $ExifExtract) { Remove-Item -Recurse -Force $ExifExtract }
+Expand-Archive -Path $ExifZip -DestinationPath $ExifExtract -Force
+
+$ExifExe = Get-ChildItem -Path $ExifExtract -Recurse -Filter "exiftool(-k).exe" | Select-Object -First 1
+if (-not $ExifExe) {
+    $ExifExe = Get-ChildItem -Path $ExifExtract -Recurse -Filter "exiftool*.exe" | Select-Object -First 1
+}
+if (-not $ExifExe) { throw "exiftool executable not found in ExifTool archive" }
+
+Copy-Item -Force $ExifExe.FullName (Join-Path $BinDir "exiftool.exe")
+
+$ExifFilesDir = Get-ChildItem -Path $ExifExtract -Recurse -Directory -Filter "exiftool_files" | Select-Object -First 1
+if ($ExifFilesDir) {
+    $DestExifFiles = Join-Path $BinDir "exiftool_files"
+    if (Test-Path $DestExifFiles) { Remove-Item -Recurse -Force $DestExifFiles }
+    Copy-Item -Recurse -Force $ExifFilesDir.FullName $DestExifFiles
+} else {
+    Write-Warning "exiftool_files directory not found — exiftool may fail at runtime"
 }
 
 Write-Host "Verifying bundled tools..."
 & (Join-Path $BinDir "yara.exe") --version
 & (Join-Path $BinDir "ffprobe.exe") -version
+& (Join-Path $BinDir "ffmpeg.exe") -version
+& (Join-Path $BinDir "exiftool.exe") -ver
 
-Write-Host "Windows YARA + ffprobe ready in $BinDir"
+Write-Host "Windows scanner tools ready in $BinDir"

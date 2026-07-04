@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { formatAppDate } from "@/lib/datetime";
 
 export default function Quarantine() {
   const { quarantinedFiles, isLoading, restoreFile, deleteFile } = useQuarantine();
@@ -67,14 +68,6 @@ export default function Quarantine() {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  }
-
-  function formatDate(iso: string): string {
-    return new Date(iso).toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
   }
 
   return (
@@ -140,7 +133,7 @@ export default function Quarantine() {
                 {file.threatName}
               </span>
               <span className="text-xs text-muted-foreground">
-                {formatDate(file.quarantinedAt)}
+                {formatAppDate(file.quarantinedAt)}
               </span>
               <span className="text-xs font-medium text-destructive">
                 {file.riskScore}%

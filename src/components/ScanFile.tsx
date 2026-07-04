@@ -186,7 +186,7 @@ export default function ScanFile() {
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader
         title="Scan"
-        description="Analyze a single file with hash lookup, ClamAV, YARA rules, and structural checks."
+        description="Analyze a single file with hash lookup, ClamAV, YARA rules, structural parsing, metadata inspection, and steganalysis."
       />
 
       {error && (

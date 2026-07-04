@@ -6,7 +6,8 @@
       "resources/yara_rules/*",
       "resources/clamav/*",
       "binaries/macos/*",
-      "binaries/macos/lib/*"
+      "binaries/macos/lib/*",
+      "binaries/macos/exiftool_lib/**"
     ]
   }
 }

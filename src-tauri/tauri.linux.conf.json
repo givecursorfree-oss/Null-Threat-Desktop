@@ -6,7 +6,8 @@
       "resources/yara_rules/*",
       "resources/clamav/*",
       "binaries/linux/*",
-      "binaries/linux/lib/*"
+      "binaries/linux/lib/*",
+      "binaries/linux/exiftool_lib/**"
     ]
   }
 }

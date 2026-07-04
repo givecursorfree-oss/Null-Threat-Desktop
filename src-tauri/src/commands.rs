@@ -418,6 +418,8 @@ pub async fn check_dependencies(
     let runtime = Some(state.clamav_runtime_dir.as_path());
     let yara_available = crate::scanner::yara::is_yara_available(runtime);
     let ffprobe_available = crate::scanner::video::is_ffprobe_available(runtime);
+    let ffmpeg_available = crate::scanner::tools::is_ffmpeg_available(runtime);
+    let exiftool_available = crate::scanner::tools::is_exiftool_available(runtime);
     let yara_rules_found = crate::setup::ensure_yara_rules(
         &state.rules_dir,
         state.resource_dir.as_deref(),
@@ -429,6 +431,8 @@ pub async fn check_dependencies(
         clamav_available,
         yara_available,
         ffprobe_available,
+        ffmpeg_available,
+        exiftool_available,
         yara_rules_found,
         db_connected,
         malwarebazaar_hash_count,

@@ -10,6 +10,7 @@ import LiveFeed from "./LiveFeed";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { formatAppTime } from "../lib/datetime";
 import type { VerdictBreakdown } from "../types";
 
 export default function Dashboard() {
@@ -78,7 +79,7 @@ export default function Dashboard() {
         <Metric label="Files scanned" value={stats.filesScanned.toLocaleString()} />
         <Metric label="Threats flagged" value={stats.threatsBlocked.toLocaleString()} />
         <Metric label="Quarantined" value={stats.filesQuarantined.toLocaleString()} />
-        <Metric label="Last activity" value={formatTime(stats.lastUpdated)} />
+        <Metric label="Last activity" value={formatAppTime(stats.lastUpdated)} />
       </div>
 
       {isScanning && (
@@ -243,12 +244,3 @@ function BreakdownRow({
   );
 }
 
-function formatTime(iso: string): string {
-  try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return "—";
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  } catch {
-    return "—";
-  }
-}

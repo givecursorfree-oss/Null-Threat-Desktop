@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-command setup: ClamAV + YARA + ffprobe (Linux/macOS)
+# One-command setup: ClamAV + YARA + ffprobe + ffmpeg + exiftool (Linux/macOS)
 # Usage: ./scripts/setup-scanner-tools.sh
 
 set -euo pipefail

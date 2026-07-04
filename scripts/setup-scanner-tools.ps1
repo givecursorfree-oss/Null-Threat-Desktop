@@ -1,4 +1,4 @@
-# One-command setup: ClamAV + YARA + ffprobe for Windows builds
+# One-command setup: ClamAV + YARA + ffprobe + ffmpeg + exiftool for Windows builds
 # Usage: .\scripts\setup-scanner-tools.ps1
 
 $ErrorActionPreference = "Stop"
