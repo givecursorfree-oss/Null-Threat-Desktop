@@ -105,57 +105,30 @@ chmod +x NullThreat-*.AppImage && ./NullThreat-*.AppImage
 
 ## Dependencies
 
-Null Threat bundles ClamAV and YARA rules in release builds. For development or air-gapped manual setup, install these tools:
+Null Threat bundles **ClamAV**, **YARA**, and **ffprobe** in release builds (CI downloads them automatically). End users do not install these separately.
 
-| Tool | Purpose | Required |
+For **local development builds**, bundle all scanner tools with one command:
+
+**Windows:**
+
+```powershell
+.\scripts\setup-scanner-tools.ps1
+```
+
+**Linux / macOS:**
+
+```bash
+chmod +x scripts/setup-scanner-tools.sh
+./scripts/setup-scanner-tools.sh
+```
+
+| Tool | Purpose | Release build |
 |---|---|---|
-| **ClamAV** | Antivirus signature scanning | Recommended (skipped if unavailable) |
-| **ffprobe** | Video container analysis (PE/ZIP inside media) | Optional |
-| **YARA** | Rule-based file matching | Bundled with release builds |
+| **ClamAV** | Antivirus signature scanning | Bundled |
+| **YARA** | Rule-based file matching | Bundled |
+| **ffprobe** | Video container analysis (PE/ZIP inside media) | Bundled |
 
-### Install ClamAV
-
-**Windows:**
-
-```powershell
-winget install ClamAV.ClamAV
-.\scripts\setup-clamav.ps1
-```
-
-**macOS:**
-
-```bash
-brew install clamav
-freshclam
-```
-
-**Linux (Debian/Ubuntu):**
-
-```bash
-sudo apt update
-sudo apt install clamav clamav-daemon
-sudo freshclam
-```
-
-### Install ffprobe (FFmpeg)
-
-**Windows:**
-
-```powershell
-winget install Gyan.FFmpeg
-```
-
-**macOS:**
-
-```bash
-brew install ffmpeg
-```
-
-**Linux (Debian/Ubuntu):**
-
-```bash
-sudo apt install ffmpeg
-```
+Individual setup scripts (`setup-clamav*`, `setup-yara-ffprobe*`) remain available if you only need one tool.
 
 ---
 
@@ -167,8 +140,7 @@ sudo apt install ffmpeg
 |---|---|
 | **Rust** | 1.77+ |
 | **Node.js** | 20 LTS+ |
-| **ClamAV** | 1.0+ (optional for dev) |
-| **ffprobe** | 6.0+ (optional) |
+| **Scanner tools** | Bundled via `setup-scanner-tools` (see above) |
 
 ### Steps
 
@@ -180,8 +152,9 @@ cd null-threat
 # 2. Install frontend dependencies
 npm install
 
-# 3. (Optional) Bundle ClamAV for release builds — Windows
-# .\scripts\setup-clamav.ps1
+# 3. Bundle scanner tools (ClamAV + YARA + ffprobe)
+# Windows: .\scripts\setup-scanner-tools.ps1
+# Linux/macOS: ./scripts/setup-scanner-tools.sh
 
 # 4. Run in development mode (hot-reload)
 npm run dev
