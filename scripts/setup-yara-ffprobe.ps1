@@ -64,7 +64,13 @@ Get-ChildItem -Path $FfmpegBinDir.FullName -Filter "*.dll" | ForEach-Object {
 
 Write-Host "Downloading ExifTool $ExifToolVersion for Windows..."
 $ExifZip = Join-Path $TempDir "exiftool-win.zip"
-Invoke-WebRequest -Uri $ExifToolUrl -OutFile $ExifZip -UseBasicParsing
+# SourceForge mirrors require redirect following; curl handles this reliably on Windows.
+curl.exe -fsSL -o $ExifZip $ExifToolUrl
+if ($LASTEXITCODE -ne 0) { throw "ExifTool download failed (curl exit $LASTEXITCODE)" }
+$zipBytes = [System.IO.File]::ReadAllBytes($ExifZip)
+if ($zipBytes.Length -lt 2 -or $zipBytes[0] -ne 0x50 -or $zipBytes[1] -ne 0x4B) {
+    throw "ExifTool download did not return a valid zip archive"
+}
 
 $ExifExtract = Join-Path $TempDir "exiftool"
 if (Test-Path $ExifExtract) { Remove-Item -Recurse -Force $ExifExtract }

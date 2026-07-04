@@ -71,7 +71,7 @@ done
 
 echo "Downloading ExifTool ${EXIFTOOL_VERSION}..."
 TMP="$(mktemp -d)"
-curl -fsSL "$EXIFTOOL_URL" -o "$TMP/exiftool.tar.gz"
+curl -fsSL -L "$EXIFTOOL_URL" -o "$TMP/exiftool.tar.gz"
 tar -xzf "$TMP/exiftool.tar.gz" -C "$TMP"
 EXIF_DIR="$(find "$TMP" -maxdepth 1 -type d -name 'Image-ExifTool-*' | head -1)"
 if [ -z "$EXIF_DIR" ]; then
