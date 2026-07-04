@@ -111,6 +111,7 @@ fn main() {
             commands::update_signatures,
             commands::get_hash_intel_status,
             commands::update_hash_intel,
+            commands::sync_yara_rules,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Null Threat");

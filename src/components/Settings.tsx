@@ -13,6 +13,7 @@ import {
   updateSignatures,
   fetchHashIntelStatus,
   updateHashIntel,
+  syncYaraRules,
 } from "../lib/api";
 import { useWatcher } from "../hooks/useWatcher";
 import { useScanStore } from "../store/scanStore";
@@ -37,6 +38,7 @@ export default function Settings() {
   const [hashIntelStatus, setHashIntelStatus] = useState<HashIntelStatus | null>(null);
   const [isUpdatingSignatures, setIsUpdatingSignatures] = useState(false);
   const [isUpdatingHashIntel, setIsUpdatingHashIntel] = useState(false);
+  const [isSyncingYaraRules, setIsSyncingYaraRules] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -53,6 +55,23 @@ export default function Settings() {
       .then(setHashIntelStatus)
       .catch(() => {});
   }, []);
+
+  const handleSyncYaraRules = async () => {
+    setError(null);
+    setIsSyncingYaraRules(true);
+    try {
+      const count = await syncYaraRules();
+      const next = await fetchDependencies();
+      setDeps(next);
+      if (count === 0) {
+        setError("Could not install YARA rules from the bundled app files.");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsSyncingYaraRules(false);
+    }
+  };
 
   const handleAddFolder = async () => {
     setError(null);
@@ -198,10 +217,22 @@ export default function Settings() {
               <li>Database: {deps.dbConnected ? "connected" : "error"}</li>
             </ul>
             {deps.yaraRulesFound === 0 && deps.yaraAvailable && (
-              <p className="mt-3 text-xs text-amber-300/90">
-                YARA is installed but no rule files were found. Bundled rules should install
-                automatically on launch — try restarting the app.
-              </p>
+              <div className="mt-3 space-y-2">
+                <p className="text-xs text-amber-300/90">
+                  YARA is installed but rule files are missing from app data. Click below to
+                  install the bundled rules — no restart required.
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void handleSyncYaraRules()}
+                  disabled={isSyncingYaraRules}
+                >
+                  <RefreshCw className={`h-3 w-3 ${isSyncingYaraRules ? "animate-spin" : ""}`} />
+                  {isSyncingYaraRules ? "Installing rules..." : "Install YARA rules"}
+                </Button>
+              </div>
             )}
             {deps.malwarebazaarHashCount > 0 && deps.malwarebazaarHashCount < 2000 && (
               <p className="mt-3 text-xs text-muted-foreground">

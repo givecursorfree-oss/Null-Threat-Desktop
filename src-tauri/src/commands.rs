@@ -418,3 +418,11 @@ pub async fn check_dependencies(
         malwarebazaar_hash_count,
     })
 }
+
+#[tauri::command]
+pub fn sync_yara_rules(state: State<'_, AppState>) -> Result<u32, String> {
+    Ok(crate::setup::sync_yara_rules(
+        &state.rules_dir,
+        state.resource_dir.as_deref(),
+    ))
+}

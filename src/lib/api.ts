@@ -374,6 +374,10 @@ export async function fetchDependencies(): Promise<DependencyStatus> {
   return mapDependencies(raw);
 }
 
+export async function syncYaraRules(): Promise<number> {
+  return invoke<number>("sync_yara_rules");
+}
+
 export async function fetchQuarantineList(): Promise<QuarantinedFile[]> {
   const raw = await invoke<RustQuarantineEntry[]>("get_quarantine_list");
   return raw.map(mapQuarantineEntry);

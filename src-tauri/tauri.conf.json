@@ -38,6 +38,7 @@
     ],
     "resources": [
       "../rules/",
+      "resources/yara_rules/*",
       "resources/clamav/*",
       "binaries/windows/*",
       "binaries/windows/certs/*",

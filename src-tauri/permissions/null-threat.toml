@@ -26,5 +26,6 @@ commands.allow = [
   "get_signature_status",
   "update_signatures",
   "get_hash_intel_status",
-  "update_hash_intel"
+  "update_hash_intel",
+  "sync_yara_rules"
 ]
