@@ -51,6 +51,14 @@ impl Database {
         rows.collect()
     }
 
+    /// Permanently delete all scan history rows and reclaim disk space.
+    pub fn clear_scan_history(&self) -> SqliteResult<u64> {
+        let conn = self.conn.lock().unwrap();
+        let deleted = conn.execute("DELETE FROM scan_history", [])?;
+        conn.execute("VACUUM", [])?;
+        Ok(deleted as u64)
+    }
+
     // ── Quarantine ────────────────────────────────────────────────
 
     pub fn insert_quarantine_entry(

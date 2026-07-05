@@ -358,6 +358,14 @@ pub async fn export_history_csv(state: State<'_, AppState>) -> Result<String, St
 }
 
 #[tauri::command]
+pub async fn clear_scan_history(state: State<'_, AppState>) -> Result<u64, String> {
+    state
+        .db
+        .clear_scan_history()
+        .map_err(|e| format!("Failed to clear scan history: {e}"))
+}
+
+#[tauri::command]
 pub fn get_verdict_breakdown(state: State<'_, AppState>) -> Result<VerdictBreakdown, String> {
     state
         .db

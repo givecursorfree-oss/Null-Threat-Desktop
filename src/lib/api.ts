@@ -575,6 +575,10 @@ export async function exportHistoryCsv(): Promise<string> {
   return invoke<string>("export_history_csv");
 }
 
+export async function clearScanHistory(): Promise<number> {
+  return invoke<number>("clear_scan_history");
+}
+
 export async function fetchScanHistory(limit = 100): Promise<ScanHistoryEntry[]> {
   const raw = await invoke<RustScanRecord[]>("get_scan_history", { limit });
   return raw.map(mapHistoryEntry);

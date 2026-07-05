@@ -109,6 +109,7 @@ fn main() {
             commands::remove_from_whitelist,
             commands::get_whitelist,
             commands::export_history_csv,
+            commands::clear_scan_history,
             commands::check_dependencies,
             commands::get_signature_status,
             commands::update_signatures,

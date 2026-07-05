@@ -22,6 +22,7 @@ commands.allow = [
   "remove_from_whitelist",
   "get_whitelist",
   "export_history_csv",
+  "clear_scan_history",
   "check_dependencies",
   "get_signature_status",
   "update_signatures",

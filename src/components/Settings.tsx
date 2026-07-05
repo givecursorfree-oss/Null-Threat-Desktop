@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
-import { FolderPlus, Trash2, Download, Eye, EyeOff, AlertCircle, RefreshCw } from "lucide-react";
+import { FolderPlus, Trash2, Download, Eye, EyeOff, AlertCircle, RefreshCw, DatabaseZap } from "lucide-react";
 import {
   exportHistoryCsv,
+  clearScanHistory,
+  fetchDashboardStats,
   addToWhitelist,
   toggleRealtimeProtection,
   pickWatchedFolder,
@@ -28,7 +30,7 @@ import type { DependencyStatus, HashIntelStatus, SignatureStatus } from "../type
 
 export default function Settings() {
   const { watchedFolders, addFolder, removeFolder, toggleFolder } = useWatcher();
-  const { realtimeProtection, setRealtimeProtection } = useScanStore();
+  const { realtimeProtection, setRealtimeProtection, setRecentScans, refreshStats } = useScanStore();
   const { requestFolderWatchConsent } = useConsent();
   const [whitelist, setWhitelist] = useState<
     Array<{ id: number; path: string; sha256: string }>
@@ -39,6 +41,9 @@ export default function Settings() {
   const [isUpdatingSignatures, setIsUpdatingSignatures] = useState(false);
   const [isUpdatingHashIntel, setIsUpdatingHashIntel] = useState(false);
   const [isSyncingYaraRules, setIsSyncingYaraRules] = useState(false);
+  const [showClearHistoryConfirm, setShowClearHistoryConfirm] = useState(false);
+  const [isClearingHistory, setIsClearingHistory] = useState(false);
+  const [clearHistorySuccess, setClearHistorySuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -120,6 +125,27 @@ export default function Settings() {
       URL.revokeObjectURL(url);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const handleClearHistory = async () => {
+    setError(null);
+    setClearHistorySuccess(null);
+    setIsClearingHistory(true);
+    try {
+      const deleted = await clearScanHistory();
+      setRecentScans([]);
+      refreshStats(await fetchDashboardStats());
+      setShowClearHistoryConfirm(false);
+      setClearHistorySuccess(
+        deleted > 0
+          ? `Permanently removed ${deleted.toLocaleString()} scan record${deleted === 1 ? "" : "s"} from the local database.`
+          : "Scan history was already empty."
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsClearingHistory(false);
     }
   };
 
@@ -415,17 +441,97 @@ export default function Settings() {
       </Card>
 
       <Card>
-        <CardContent className="flex items-center justify-between p-4">
-          <div>
-            <h3 className="font-display text-sm font-semibold text-foreground">Export Scan History</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">Download all scan records as CSV</p>
+        <CardHeader className="pb-3">
+          <CardTitle>Data &amp; Privacy</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="font-display text-sm font-semibold text-foreground">
+                Export Scan History
+              </h3>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Download all scan records as CSV before clearing data.
+              </p>
+            </div>
+            <Button type="button" onClick={handleExportHistory} variant="outline" size="sm">
+              <Download className="h-3 w-3" />
+              Export
+            </Button>
           </div>
-          <Button type="button" onClick={handleExportHistory} variant="outline" size="sm">
-            <Download className="h-3 w-3" />
-            Export
-          </Button>
+
+          <div className="border-t border-border/60 pt-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="font-display text-sm font-semibold text-destructive">
+                  Clear Scan History
+                </h3>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Permanently delete every scan record from the local SQLite database on this
+                  device. Quarantine, whitelist, and signature data are not affected. This cannot
+                  be undone.
+                </p>
+              </div>
+              <Button
+                type="button"
+                onClick={() => setShowClearHistoryConfirm(true)}
+                variant="destructive"
+                size="sm"
+              >
+                <DatabaseZap className="h-3 w-3" />
+                Clear all
+              </Button>
+            </div>
+            {clearHistorySuccess && (
+              <p className="mt-2 text-xs text-emerald-400/90">{clearHistorySuccess}</p>
+            )}
+          </div>
         </CardContent>
       </Card>
+
+      {showClearHistoryConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex animate-in fade-in-0 items-center justify-center bg-background/80 duration-200"
+          onClick={() => !isClearingHistory && setShowClearHistoryConfirm(false)}
+        >
+          <Card
+            className="mx-4 w-full max-w-sm animate-in fade-in-0 zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardContent className="space-y-4 p-4">
+              <h3 className="font-display text-sm font-semibold text-foreground">
+                Clear scan history permanently?
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                All scan history rows will be deleted from{" "}
+                <span className="font-mono text-foreground">nullthreat.db</span> and disk space
+                will be reclaimed. Export first if you need a backup. Quarantined files and your
+                whitelist will stay intact.
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={isClearingHistory}
+                  onClick={() => setShowClearHistoryConfirm(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  disabled={isClearingHistory}
+                  onClick={() => void handleClearHistory()}
+                >
+                  {isClearingHistory ? "Clearing..." : "Yes, delete permanently"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
