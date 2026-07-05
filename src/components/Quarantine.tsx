@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatAppDate } from "@/lib/datetime";
+import { formatRiskScoreShort } from "@/lib/riskScore";
 
 export default function Quarantine() {
   const { quarantinedFiles, isLoading, restoreFile, deleteFile } = useQuarantine();
@@ -136,7 +137,7 @@ export default function Quarantine() {
                 {formatAppDate(file.quarantinedAt)}
               </span>
               <span className="text-xs font-medium text-destructive">
-                {file.riskScore}%
+                {formatRiskScoreShort(file.riskScore)}
               </span>
               <span className="text-xs text-muted-foreground">
                 {formatFileSize(file.fileSize)}

@@ -10,8 +10,16 @@ export interface ScanResult {
   verdict: Verdict;
   threatName?: string;
   engines: EngineResult[];
+  deepChecks: DeepAnalysisCheck[];
   findings: string[];
   scanSource?: string;
+}
+
+export interface DeepAnalysisCheck {
+  name: "Identity" | "Structure" | "Metadata" | "Steganography";
+  verdict: Verdict;
+  score: number;
+  details: string;
 }
 
 export interface EngineResult {

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { formatAppTime } from "../lib/datetime";
+import { formatRiskScoreShort } from "../lib/riskScore";
 import type { VerdictBreakdown } from "../types";
 
 export default function Dashboard() {
@@ -124,7 +125,7 @@ export default function Dashboard() {
                         {scan.fileName}
                       </td>
                       <td className="hidden px-4 py-3 tabular-nums text-muted-foreground sm:table-cell">
-                        {scan.riskScore}%
+                        {formatRiskScoreShort(scan.riskScore)}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <VerdictBadge verdict={scan.verdict} />

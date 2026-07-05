@@ -367,3 +367,29 @@ fn analyze_video_frames(path: &Path, runtime_dir: Option<&Path>) -> StegAnalysis
         }],
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn video_lsb_steg_is_never_scored_suspicious() {
+        let dir = std::env::temp_dir().join("null-threat-steg-test");
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("clip.mp4");
+        {
+            let mut f = std::fs::File::create(&path).unwrap();
+            f.write_all(&[0u8; 512]).unwrap();
+        }
+        let result = analyze_steg(&path, None);
+        assert_eq!(result.method, "video-frames");
+        assert!(!result.suspicious, "video LSB must not contribute to risk score");
+        assert!(
+            result.details.iter().any(|d| d.contains("not scored")),
+            "expected explanatory skip message, got {:?}",
+            result.details
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}

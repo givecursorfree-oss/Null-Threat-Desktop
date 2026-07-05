@@ -531,3 +531,77 @@ fn find_base64_blob(text: &str) -> Option<usize> {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn write_temp(suite: &str, ext: &str, bytes: &[u8]) -> (std::path::PathBuf, std::path::PathBuf) {
+        let dir = std::env::temp_dir().join(format!("null-threat-structure-{suite}"));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join(format!("sample.{ext}"));
+        std::fs::write(&path, bytes).unwrap();
+        (path, dir)
+    }
+
+    #[test]
+    fn minimal_mp4_passes_structure_walk() {
+        let bytes: [u8; 28] = [
+            0x00, 0x00, 0x00, 0x14, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6F, 0x6D, 0x00, 0x00,
+            0x00, 0x00, 0x69, 0x73, 0x6F, 0x6D, 0x00, 0x00, 0x00, 0x08, 0x66, 0x72, 0x65, 0x65,
+        ];
+        let (path, dir) = write_temp("minimal-mp4", "mp4", &bytes);
+        let result = analyze_structure(&path);
+        let _ = std::fs::remove_dir_all(dir);
+        assert!(result.applicable);
+        assert_eq!(result.container, "mp4");
+        assert!(
+            result.anomalies.is_empty(),
+            "expected no anomalies, got {:?}",
+            result.anomalies
+        );
+    }
+
+    #[test]
+    fn malformed_mp4_too_small_is_flagged() {
+        let (path, dir) = write_temp("malformed-mp4", "mp4", &[0x00, 0x00, 0x00, 0x04]);
+        let result = analyze_structure(&path);
+        let _ = std::fs::remove_dir_all(dir);
+        assert!(result.applicable);
+        assert!(
+            result.anomalies.iter().any(|a| a.contains("too small")),
+            "expected too-small anomaly, got {:?}",
+            result.anomalies
+        );
+    }
+
+    #[test]
+    fn subtitle_script_injection_is_flagged() {
+        let content = b"1\n00:00:01,000 --> 00:00:02,000\n<script>alert('x')</script>\n";
+        let (path, dir) = write_temp("subtitle-script", "srt", content);
+        let result = analyze_structure(&path);
+        let _ = std::fs::remove_dir_all(dir);
+        assert_eq!(result.container, "subtitle");
+        assert!(
+            result.anomalies.iter().any(|a| a.contains("script") || a.contains("HTML")),
+            "expected script/HTML anomaly, got {:?}",
+            result.anomalies
+        );
+    }
+
+    #[test]
+    fn unknown_extension_is_not_applicable() {
+        let (path, dir) = write_temp("unknown-ext", "txt", b"hello");
+        let result = analyze_structure(&path);
+        let _ = std::fs::remove_dir_all(dir);
+        assert!(!result.applicable);
+        assert!(result.anomalies.is_empty());
+    }
+
+    #[test]
+    fn is_sane_atom_type_rejects_binary_nal() {
+        assert!(!is_sane_atom_type(&[0x00, 0x00, 0x00, 0x01]));
+        assert!(is_sane_atom_type(b"ftyp"));
+    }
+}

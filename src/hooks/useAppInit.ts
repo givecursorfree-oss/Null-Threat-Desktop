@@ -60,6 +60,7 @@ export function useAppInit() {
             riskScore: h.riskScore,
             verdict: h.verdict,
             engines: [],
+            deepChecks: [],
             findings: [],
           }))
         );

@@ -56,11 +56,11 @@ export default function ConfidenceMeter({ score, size = 160 }: ConfidenceMeterPr
           {score}
         </span>
         <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-          risk score
+          /100
         </span>
       </div>
       <span className="text-sm font-medium" style={{ color }}>
-        {getVerdictText(score)}
+        {getVerdictText(score)} · {score}/100
       </span>
     </div>
   );

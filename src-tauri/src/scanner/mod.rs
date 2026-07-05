@@ -3,6 +3,7 @@ pub mod deep;
 pub mod entropy;
 pub mod hash;
 pub mod metadata;
+pub mod scoring;
 pub mod steg;
 pub mod structure;
 pub mod tools;
@@ -184,141 +185,17 @@ pub async fn run_scan_pipeline(
     emit_progress(app, "deep", 90, "Deep analysis complete");
 
     // ── Score calculation ────────────────────────────────────────
-    let mut hash_score: u32 = 0;
-    let mut clam_score: u32 = 0;
-    let mut magic_score: u32 = 0;
-    let mut entropy_score: u32 = 0;
-    let mut video_score: u32 = 0;
-    let mut structure_score: u32 = 0;
-    let mut metadata_score: u32 = 0;
-    let mut steg_score: u32 = 0;
-    let mut threat_name: Option<String> = None;
-    let mut findings: Vec<String> = Vec::new();
-
-    if let HashResult::KnownMalware(name) = &hash_result {
-        hash_score = 80;
-        threat_name = Some(name.clone());
-        findings.push(format!(
-            "SHA256 lookup: file hash matches known malware signature ({name})"
-        ));
-    }
-
-    match &clam_result {
-        ClamResult::Detected(name) => {
-            clam_score = 70;
-            if threat_name.is_none() {
-                threat_name = Some(name.clone());
-            }
-            findings.push(format!(
-                "ClamAV: known virus/malware signature detected ({name})"
-            ));
-        }
-        ClamResult::Unavailable(reason) => {
-            findings.push(format!("ClamAV skipped: {reason}"));
-        }
-        _ => {}
-    }
-
-    let yara_score = (yara_result.matched_rules.len() as u32 * 40).min(80);
-    if let Some(reason) = &yara_result.skipped {
-        findings.push(format!("YARA skipped: {reason}"));
-    }
-    for rule in &yara_result.matched_rules {
-        findings.push(format!("YARA rule matched: {rule}"));
-    }
-    if threat_name.is_none() && !yara_result.matched_rules.is_empty() {
-        threat_name = Some(format!("YARA: {}", yara_result.matched_rules.join(", ")));
-    }
-
-    if deep_analysis.magic_bytes.mismatch {
-        magic_score = 30;
-        findings.push(format!(
-            "File type mismatch: extension '.{}' but content looks like {} — file may be disguised",
-            deep_analysis.magic_bytes.expected_extension,
-            deep_analysis.magic_bytes.detected_type
-        ));
-    }
-
-    if deep_analysis.high_entropy {
-        entropy_score = 20;
-        findings.push(format!(
-            "High entropy ({:.2}): content may be encrypted, compressed, or packed to hide malicious code",
-            deep_analysis.entropy
-        ));
-    }
-
-    for anomaly in &deep_analysis.video_analysis.anomalies {
-        findings.push(format!("Deep analysis: {anomaly}"));
-    }
-    if !deep_analysis.video_analysis.anomalies.is_empty() {
-        video_score = 35;
-    }
-
-    // ── Stage 1: Structure parser ────────────────────────────────
-    if !deep_analysis.structure.anomalies.is_empty() {
-        structure_score = 35;
-        for anomaly in &deep_analysis.structure.anomalies {
-            findings.push(format!("Structure ({}): {anomaly}", deep_analysis.structure.container));
-        }
-    }
-
-    // ── Stage 2: Metadata scanner ────────────────────────────────
-    if !deep_analysis.metadata.anomalies.is_empty() {
-        // Encoded executables / command injection in metadata are high signal.
-        let severe = deep_analysis.metadata.anomalies.iter().any(|a| {
-            a.contains("executable") || a.contains("script/command") || a.contains("Shell/command")
-        });
-        metadata_score = if severe { 55 } else { 30 };
-        for anomaly in &deep_analysis.metadata.anomalies {
-            findings.push(format!("Metadata: {anomaly}"));
-        }
-    }
-
-    // ── Stage 3: Steganalysis ────────────────────────────────────
-    if deep_analysis.steganalysis.suspicious {
-        steg_score = 45;
-        if threat_name.is_none() {
-            threat_name = Some("Possible steganography (hidden payload)".into());
-        }
-    }
-    for detail in &deep_analysis.steganalysis.details {
-        if deep_analysis.steganalysis.suspicious || detail.contains("skipped") {
-            findings.push(format!("Steganalysis: {detail}"));
-        }
-    }
-
-    let total_raw = hash_score
-        + clam_score
-        + yara_score
-        + magic_score
-        + entropy_score
-        + video_score
-        + structure_score
-        + metadata_score
-        + steg_score;
-    let risk_score = total_raw.min(100);
-
-    let verdict = if risk_score >= 81 {
-        "malware"
-    } else if risk_score >= 51 {
-        "high_risk"
-    } else if risk_score >= 21 {
-        "suspicious"
-    } else {
-        "clean"
-    };
-
-    let engine_results = EngineResults {
-        hash_score,
-        clam_score,
-        yara_score,
-        magic_score,
-        entropy_score,
-        video_score,
-        structure_score,
-        metadata_score,
-        steg_score,
-    };
+    let scoring = scoring::compute_risk_scores(
+        &hash_result,
+        &clam_result,
+        &yara_result,
+        &deep_analysis,
+    );
+    let risk_score = scoring.risk_score;
+    let verdict = scoring.verdict;
+    let threat_name = scoring.threat_name;
+    let findings = scoring.findings;
+    let engine_results = scoring.engine_results;
 
     emit_progress(app, "complete", 100, &format!("Scan complete – {verdict}"));
 

@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatAppDate } from "../lib/datetime";
+import { formatRiskScoreShort } from "../lib/riskScore";
 import type { ScanHistoryEntry, Verdict } from "../types";
 
 const PAGE_SIZE = 15;
@@ -157,7 +158,7 @@ export default function History() {
                         : "text-muted-foreground"
                   )}
                 >
-                  {entry.riskScore}%
+                  {formatRiskScoreShort(entry.riskScore)}
                 </span>
                 <VerdictBadge verdict={entry.verdict} className="justify-self-start sm:justify-self-auto" />
                 <span className="text-xs capitalize text-muted-foreground">

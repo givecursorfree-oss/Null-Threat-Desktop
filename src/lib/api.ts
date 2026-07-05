@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   DashboardStats,
+  DeepAnalysisCheck,
   DependencyStatus,
   EngineName,
   EngineResult,
@@ -171,6 +172,86 @@ function engineVerdict(score: number, detected?: boolean): Verdict {
   return "clean";
 }
 
+function buildDeepChecks(raw: RustScanResult): DeepAnalysisCheck[] {
+  const identityParts: string[] = [];
+  if (raw.deep_analysis.magic_bytes.mismatch) {
+    identityParts.push(
+      `Extension '.${raw.deep_analysis.magic_bytes.expected_extension ?? "unknown"}' vs content '${raw.deep_analysis.magic_bytes.detected_type}'`
+    );
+  } else if (raw.deep_analysis.magic_bytes.detected_type) {
+    identityParts.push(`Content type: ${raw.deep_analysis.magic_bytes.detected_type}`);
+  }
+  if (raw.deep_analysis.high_entropy) {
+    identityParts.push(`High entropy (${raw.deep_analysis.entropy.toFixed(2)})`);
+  }
+  const identityScore = raw.engine_results.magic_score + raw.engine_results.entropy_score;
+  const identityDetected = raw.deep_analysis.magic_bytes.mismatch || raw.deep_analysis.high_entropy;
+
+  const structureParts: string[] = [
+    ...raw.deep_analysis.structure.anomalies,
+    ...raw.deep_analysis.video_analysis.anomalies,
+  ];
+  const structureScore = raw.engine_results.structure_score + raw.engine_results.video_score;
+  const structureDetected =
+    (raw.deep_analysis.structure.anomalies.length ?? 0) > 0 ||
+    raw.deep_analysis.video_analysis.anomalies.length > 0;
+
+  const metadataParts = raw.deep_analysis.metadata.anomalies;
+  const metadataScore = raw.engine_results.metadata_score;
+  const metadataDetected = metadataParts.length > 0;
+
+  const stegParts = raw.deep_analysis.steganalysis.details.filter(
+    (d) => raw.deep_analysis.steganalysis.suspicious || d.includes("skipped") || d.includes("not scored")
+  );
+  const stegScore = raw.engine_results.steg_score;
+  const stegDetected = raw.deep_analysis.steganalysis.suspicious;
+
+  return [
+    {
+      name: "Identity",
+      verdict: engineVerdict(identityScore, identityDetected),
+      score: identityScore,
+      details:
+        identityParts.length > 0
+          ? identityParts.join("; ")
+          : "File type and entropy look normal",
+    },
+    {
+      name: "Structure",
+      verdict: engineVerdict(structureScore, structureDetected),
+      score: structureScore,
+      details:
+        structureParts.length > 0
+          ? structureParts.join("; ")
+          : raw.deep_analysis.structure.applicable
+            ? "Container structure validated"
+            : "No structural parser applied for this file type",
+    },
+    {
+      name: "Metadata",
+      verdict: engineVerdict(metadataScore, metadataDetected),
+      score: metadataScore,
+      details:
+        metadataParts.length > 0
+          ? metadataParts.join("; ")
+          : raw.deep_analysis.metadata.scanned
+            ? `No suspicious metadata (${raw.deep_analysis.metadata.tool})`
+            : "Metadata scan not applicable",
+    },
+    {
+      name: "Steganography",
+      verdict: engineVerdict(stegScore, stegDetected),
+      score: stegScore,
+      details:
+        stegParts.length > 0
+          ? stegParts.join("; ")
+          : raw.deep_analysis.steganalysis.analyzed
+            ? "No statistical signs of LSB steganography"
+            : "Steganalysis not applicable for this file type",
+    },
+  ];
+}
+
 function buildEngineDetails(raw: RustScanResult): EngineResult[] {
   const hashDetected =
     typeof raw.hash_result === "object" && raw.hash_result !== null && "KnownMalware" in raw.hash_result;
@@ -277,6 +358,7 @@ function buildEngineDetails(raw: RustScanResult): EngineResult[] {
 
 export function mapScanResult(raw: RustScanResult): ScanResult {
   const engines = buildEngineDetails(raw);
+  const deepChecks = buildDeepChecks(raw);
 
   return {
     id: crypto.randomUUID(),
@@ -290,6 +372,7 @@ export function mapScanResult(raw: RustScanResult): ScanResult {
     verdict: mapVerdict(raw.verdict, raw.risk_score),
     threatName: raw.threat_name ?? undefined,
     engines,
+    deepChecks,
     findings: raw.findings ?? [],
     scanSource: raw.scan_source,
   };
@@ -372,6 +455,7 @@ export function mapHistoryToScanResult(entry: ScanHistoryEntry): ScanResult {
     riskScore: entry.riskScore,
     verdict: entry.verdict,
     engines: [],
+    deepChecks: [],
     findings: [],
   };
 }

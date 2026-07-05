@@ -12,6 +12,7 @@ import ThreatCard from "./ThreatCard";
 import VerdictBadge from "./VerdictBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatRiskScore } from "@/lib/riskScore";
 import type { ScanResult as ScanResultType, ThreatInfo } from "../types";
 
 interface ScanResultProps {
@@ -48,7 +49,7 @@ export default function ScanResult({
           severity: result.riskScore > 80 ? "critical" : result.riskScore > 50 ? "high" : "medium",
           description:
             result.findings.filter((f) => !f.startsWith("ClamAV skipped:")).join(" ") ||
-            `Analysis flagged this file with ${result.riskScore}% risk confidence.`,
+            formatRiskScore(result.riskScore),
           recommendedActions: [
             result.verdict === "detected" ? "Quarantine the file immediately" : "Review before opening",
             "Do not execute or open this file unless you trust the source",
@@ -116,6 +117,37 @@ export default function ScanResult({
         </CardContent>
       </Card>
 
+      {result.deepChecks.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle>Deep Analysis Breakdown</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-2">
+              {result.deepChecks.map((check) => (
+                <div
+                  key={check.name}
+                  className="space-y-1 rounded-md bg-secondary px-3 py-2"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-medium text-foreground">{check.name}</span>
+                    <div className="flex items-center gap-2">
+                      {check.score > 0 && (
+                        <span className="font-mono text-[10px] text-muted-foreground">
+                          +{check.score}
+                        </span>
+                      )}
+                      <VerdictBadge verdict={check.verdict} />
+                    </div>
+                  </div>
+                  <p className="text-[11px] leading-snug text-muted-foreground">{check.details}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {result.findings.length > 0 && result.verdict !== "clean" && (
         <Card>
           <CardHeader className="pb-3">
@@ -158,8 +190,8 @@ export default function ScanResult({
               {result.verdict === "clean"
                 ? "All scan engines report this file as safe."
                 : result.verdict === "suspicious"
-                  ? `Suspicious indicators found with ${result.riskScore}% risk confidence. See details below.`
-                  : `Malicious content identified with ${result.riskScore}% confidence.`}
+                  ? `${formatRiskScore(result.riskScore)} — suspicious indicators found. See details below.`
+                  : `${formatRiskScore(result.riskScore)} — malicious indicators identified.`}
             </p>
           </div>
         </CardContent>

@@ -68,3 +68,62 @@ pub fn is_high_entropy_for_file(path: &Path, entropy: f64) -> bool {
 
     is_high_entropy(entropy)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn high_entropy_threshold() {
+        assert!(!is_high_entropy(7.0));
+        assert!(is_high_entropy(7.3));
+    }
+
+    #[test]
+    fn video_extensions_skip_entropy_flag() {
+        let dir = std::env::temp_dir().join("null-threat-entropy-test");
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("sample.mp4");
+        {
+            let mut f = std::fs::File::create(&path).unwrap();
+            f.write_all(&[0u8; 4096]).unwrap();
+        }
+        assert!(
+            !is_high_entropy_for_file(&path, 7.9),
+            "mp4 should not be flagged for high entropy"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn jpeg_extensions_skip_entropy_flag() {
+        let dir = std::env::temp_dir().join("null-threat-entropy-jpeg");
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("photo.jpeg");
+        std::fs::write(&path, [0u8; 1024]).unwrap();
+        assert!(!is_high_entropy_for_file(&path, 7.8));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn exe_high_entropy_is_flagged() {
+        let dir = std::env::temp_dir().join("null-threat-entropy-exe");
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("packed.exe");
+        std::fs::write(&path, [0u8; 64]).unwrap();
+        assert!(is_high_entropy_for_file(&path, 7.5));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn calculate_entropy_uniform_bytes() {
+        let dir = std::env::temp_dir().join("null-threat-entropy-calc");
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("uniform.bin");
+        std::fs::write(&path, vec![0u8; 256]).unwrap();
+        let e = calculate_entropy(&path).unwrap();
+        assert!(e < 0.01, "single repeated byte should have ~0 entropy, got {e}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
