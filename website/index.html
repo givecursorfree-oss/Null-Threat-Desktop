@@ -142,7 +142,7 @@
         <a href="#docs" class="text-xs font-medium text-neutral-400 hover:text-white transition-colors">Docs</a>
       </div>
       <div class="flex items-center gap-4">
-        <a href="https://github.com" class="text-xs font-medium text-neutral-400 hover:text-white transition-colors hidden sm:block">GitHub</a>
+        <a href="https://github.com/givecursorfree-oss/Null-Threat-Desktop" class="text-xs font-medium text-neutral-400 hover:text-white transition-colors hidden sm:block">GitHub</a>
         <a href="#download" class="bg-white text-black text-xs font-medium px-4 py-2 rounded-sm hover:bg-neutral-200 transition-colors">Download</a>
       </div>
     </div>
@@ -164,7 +164,7 @@
               <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
             </span>
-            v1.0 Open Source
+            v0.1 Open Source · Deep Analysis · Bundled ExifTool
           </div>
 
           <h1 class="text-5xl md:text-7xl font-semibold tracking-tight leading-[1.1] mb-6">
@@ -173,14 +173,14 @@
           </h1>
 
           <p class="text-lg text-neutral-400 max-w-2xl mx-auto mb-8">
-            Four local detection engines analyze every file on your machine — no cloud uploads, no telemetry, no subscriptions. Free forever under GPL v3.
+            Four local detection engines plus multi-layer deep analysis — identity, structure, metadata, and steganography. All scanner tools bundled. No cloud uploads, no telemetry, no subscriptions. Free forever under GPL v3.
           </p>
 
           <div class="flex flex-wrap items-center justify-center gap-4">
             <a href="#download" class="bg-white text-black text-sm font-medium px-6 py-2.5 rounded-sm hover:bg-neutral-200 transition-colors">
               Download Free
             </a>
-            <a href="https://github.com" class="border border-white/10 text-white text-sm font-medium px-6 py-2.5 rounded-sm hover:bg-white/5 transition-colors">
+            <a href="https://github.com/givecursorfree-oss/Null-Threat-Desktop" class="border border-white/10 text-white text-sm font-medium px-6 py-2.5 rounded-sm hover:bg-white/5 transition-colors">
               View on GitHub
             </a>
           </div>
@@ -243,7 +243,7 @@
               <span class="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-red-400 opacity-75"></span>
               <span class="relative inline-flex rounded-full h-3 w-3 bg-red-400"></span>
             </div>
-            <span class="text-[10px] font-mono text-red-400/80 uppercase tracking-wider">Entropy High</span>
+            <span class="text-[10px] font-mono text-red-400/80 uppercase tracking-wider">Structure</span>
           </div>
 
           <div class="absolute top-[68%] left-[62%] flex flex-col items-center gap-1">
@@ -256,9 +256,9 @@
 
           <!-- Console UI Overlay -->
           <div class="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-sm border-t border-white/5 p-4 font-mono text-xs">
-            <div class="text-emerald-400 opacity-100 mb-1">[BLOCKED] SHA-256 match — MalwareBazaar #MB-482910</div>
-            <div class="text-amber-400 opacity-60 mb-1">[WARN] Shannon entropy 7.8/8.0 — packed executable suspected</div>
-            <div class="text-neutral-400 opacity-40">[INFO] ClamAV engine initialized — 500,000+ signatures loaded</div>
+            <div class="text-emerald-400 opacity-100 mb-1">[BLOCKED] SHA-256 match — MalwareBazaar signature</div>
+            <div class="text-amber-400 opacity-60 mb-1">[WARN] Structure: embedded payload suspected · Risk score 42/100</div>
+            <div class="text-neutral-400 opacity-40">[INFO] ClamAV + YARA + ExifTool initialized — all engines local</div>
           </div>
         </div>
       </div>
@@ -274,7 +274,7 @@
           </div>
           <div class="flex items-center gap-2 px-4 py-2 rounded border border-white/10 bg-white/[0.02] text-sm text-neutral-400 hover:border-white/20 transition-colors">
             <iconify-icon icon="lucide:database" width="16"></iconify-icon>
-            500K+ Signatures
+            MalwareBazaar + NSRL
           </div>
           <div class="flex items-center gap-2 px-4 py-2 rounded border border-white/10 bg-white/[0.02] text-sm text-neutral-400 hover:border-white/20 transition-colors">
             <iconify-icon icon="lucide:lock" width="16"></iconify-icon>
@@ -310,7 +310,7 @@
             </div>
             <p class="text-xs text-neutral-500 font-mono mt-4">02</p>
             <h3 class="text-lg font-semibold text-white mt-2">Four engines analyze</h3>
-            <p class="text-sm text-neutral-400 mt-2">Hash lookup, ClamAV, YARA rules, and deep structural analysis run in parallel locally.</p>
+            <p class="text-sm text-neutral-400 mt-2">Hash lookup, ClamAV, YARA rules, and deep analysis (Identity · Structure · Metadata · Steg) run in parallel locally.</p>
           </div>
           <div class="group">
             <div class="w-10 h-10 rounded border border-white/10 flex items-center justify-center group-hover:border-emerald-500/50 transition-colors">
@@ -318,7 +318,7 @@
             </div>
             <p class="text-xs text-neutral-500 font-mono mt-4">03</p>
             <h3 class="text-lg font-semibold text-white mt-2">Act on the verdict</h3>
-            <p class="text-sm text-neutral-400 mt-2">Review the 0–100 risk score, quarantine threats to an encrypted vault, or export forensic reports.</p>
+            <p class="text-sm text-neutral-400 mt-2">Review the risk score (0–100), expand Deep Analysis to see what flagged, then quarantine or trust.</p>
           </div>
         </div>
       </div>
@@ -399,7 +399,7 @@
                 </div>
                 <div class="pb-6">
                   <h4 class="text-base font-semibold text-white">SHA-256 Hash Lookup</h4>
-                  <p class="text-sm text-neutral-400 mt-1">500,000+ MalwareBazaar and NSRL signatures in local SQLite.</p>
+                  <p class="text-sm text-neutral-400 mt-1">MalwareBazaar and NSRL hash intelligence in local SQLite.</p>
                 </div>
               </div>
               <div class="flex gap-4">
@@ -419,7 +419,7 @@
                 </div>
                 <div class="pb-6">
                   <h4 class="text-base font-semibold text-white">YARA Rule Matching</h4>
-                  <p class="text-sm text-neutral-400 mt-1">Polyglot files, packed executables, suspicious metadata.</p>
+                  <p class="text-sm text-neutral-400 mt-1">~23 bundled rules — polyglot files, packers, metadata abuse, video-container threats.</p>
                 </div>
               </div>
               <div class="flex gap-4">
@@ -428,7 +428,7 @@
                 </div>
                 <div>
                   <h4 class="text-base font-semibold text-white">Deep File Analysis</h4>
-                  <p class="text-sm text-neutral-400 mt-1">Magic bytes, Shannon entropy, ffprobe container inspection.</p>
+                  <p class="text-sm text-neutral-400 mt-1">Identity, structure, metadata, and image steg checks — expand any result for a full breakdown.</p>
                 </div>
               </div>
             </div>
@@ -496,7 +496,7 @@
           <div class="p-6 rounded border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] transition-all group">
             <iconify-icon icon="lucide:hash" width="20" class="text-neutral-400 group-hover:text-emerald-400 transition-colors"></iconify-icon>
             <h3 class="text-base font-semibold text-white mt-4">SHA-256 Hash Lookup</h3>
-            <p class="text-sm text-neutral-400 mt-2 leading-relaxed">500,000+ MalwareBazaar and NSRL signatures in local SQLite.</p>
+            <p class="text-sm text-neutral-400 mt-2 leading-relaxed">MalwareBazaar and NSRL signatures in local SQLite — refresh when online.</p>
           </div>
           <div class="p-6 rounded border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] transition-all group">
             <iconify-icon icon="lucide:file-search" width="20" class="text-neutral-400 group-hover:text-emerald-400 transition-colors"></iconify-icon>
@@ -506,7 +506,17 @@
           <div class="p-6 rounded border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] transition-all group">
             <iconify-icon icon="lucide:microscope" width="20" class="text-neutral-400 group-hover:text-emerald-400 transition-colors"></iconify-icon>
             <h3 class="text-base font-semibold text-white mt-4">Deep File Analysis</h3>
-            <p class="text-sm text-neutral-400 mt-2 leading-relaxed">Magic bytes, Shannon entropy, ffprobe container inspection.</p>
+            <p class="text-sm text-neutral-400 mt-2 leading-relaxed">Identity, structure, metadata, and image steg checks — tap any result for a full breakdown.</p>
+          </div>
+          <div class="p-6 rounded border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] transition-all group">
+            <iconify-icon icon="lucide:package" width="20" class="text-neutral-400 group-hover:text-emerald-400 transition-colors"></iconify-icon>
+            <h3 class="text-base font-semibold text-white mt-4">All Tools Bundled</h3>
+            <p class="text-sm text-neutral-400 mt-2 leading-relaxed">ClamAV, YARA, ffprobe, ffmpeg, and ExifTool ship with the app — no separate installs.</p>
+          </div>
+          <div class="p-6 rounded border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] transition-all group">
+            <iconify-icon icon="lucide:shield-off" width="20" class="text-neutral-400 group-hover:text-emerald-400 transition-colors"></iconify-icon>
+            <h3 class="text-base font-semibold text-white mt-4">Privacy Controls</h3>
+            <p class="text-sm text-neutral-400 mt-2 leading-relaxed">Export or permanently clear scan history from Settings. Quarantine and whitelist stay intact.</p>
           </div>
           <div class="p-6 rounded border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] transition-all group">
             <iconify-icon icon="lucide:wifi-off" width="20" class="text-neutral-400 group-hover:text-emerald-400 transition-colors"></iconify-icon>
@@ -522,7 +532,7 @@
       <div class="max-w-7xl mx-auto px-6">
         <div class="max-w-3xl mx-auto text-center">
           <h2 class="text-3xl md:text-4xl font-semibold text-white mb-4">Understand every verdict.</h2>
-          <p class="text-neutral-400 mb-12">A transparent 0–100 risk score with per-engine breakdown — no black-box decisions.</p>
+          <p class="text-neutral-400 mb-12">A transparent 0–100 risk score with per-engine breakdown — not a black-box confidence percentage.</p>
 
           <!-- Tier Bar -->
           <div class="flex h-2 rounded-full overflow-hidden mb-12">
@@ -579,7 +589,7 @@
             <p class="text-neutral-400 mb-6 leading-relaxed">
               Null Threat is licensed under GPL v3. Inspect the code, audit the engines, fork the project, and submit pull requests. No vendor lock-in, no hidden telemetry, no proprietary black boxes.
             </p>
-            <a href="https://github.com" class="inline-flex items-center gap-2 border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] px-6 py-3 rounded transition-colors text-white text-sm font-medium">
+            <a href="https://github.com/givecursorfree-oss/Null-Threat-Desktop" class="inline-flex items-center gap-2 border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] px-6 py-3 rounded transition-colors text-white text-sm font-medium">
               <iconify-icon icon="lucide:github" width="18"></iconify-icon>
               View on GitHub
             </a>
@@ -669,7 +679,7 @@
           </div>
           <div>
             <h4 class="text-xs font-semibold text-white uppercase tracking-wider mb-4">Community</h4>
-            <a href="https://github.com" class="text-sm text-neutral-400 hover:text-white block mb-2 transition-colors">GitHub</a>
+            <a href="https://github.com/givecursorfree-oss/Null-Threat-Desktop" class="text-sm text-neutral-400 hover:text-white block mb-2 transition-colors">GitHub</a>
             <a href="#" class="text-sm text-neutral-400 hover:text-white block mb-2 transition-colors">Issues</a>
             <a href="#" class="text-sm text-neutral-400 hover:text-white block mb-2 transition-colors">Contributing</a>
             <a href="#" class="text-sm text-neutral-400 hover:text-white block mb-2 transition-colors">License</a>
@@ -682,7 +692,7 @@
             <a href="#" class="text-neutral-500 hover:text-white transition-colors">
               <iconify-icon icon="lucide:twitter" width="18"></iconify-icon>
             </a>
-            <a href="https://github.com" class="text-neutral-500 hover:text-white transition-colors">
+            <a href="https://github.com/givecursorfree-oss/Null-Threat-Desktop" class="text-neutral-500 hover:text-white transition-colors">
               <iconify-icon icon="lucide:github" width="18"></iconify-icon>
             </a>
             <a href="#" class="text-neutral-500 hover:text-white transition-colors">

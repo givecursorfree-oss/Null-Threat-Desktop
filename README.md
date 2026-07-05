@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/null-threat/null-threat/actions"><img alt="Build Status" src="https://img.shields.io/github/actions/workflow/status/null-threat/null-threat/build.yml?branch=main&label=build&style=flat-square" /></a>
+  <a href="https://github.com/givecursorfree-oss/Null-Threat-Desktop/actions"><img alt="Build Status" src="https://img.shields.io/github/actions/workflow/status/givecursorfree-oss/Null-Threat-Desktop/build.yml?branch=main&label=build&style=flat-square" /></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-GPLv3-blue?style=flat-square" /></a>
   <a href="#installation"><img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-brightgreen?style=flat-square" /></a>
-  <a href="https://github.com/null-threat/null-threat/releases"><img alt="Version" src="https://img.shields.io/github/v/release/null-threat/null-threat?style=flat-square" /></a>
-  <a href="https://github.com/null-threat/null-threat/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/null-threat/null-threat?style=flat-square" /></a>
+  <a href="https://github.com/givecursorfree-oss/Null-Threat-Desktop/releases"><img alt="Version" src="https://img.shields.io/github/v/release/givecursorfree-oss/Null-Threat-Desktop?style=flat-square" /></a>
+  <a href="https://github.com/givecursorfree-oss/Null-Threat-Desktop/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/givecursorfree-oss/Null-Threat-Desktop?style=flat-square" /></a>
 </p>
 
 <p align="center">
@@ -29,7 +29,9 @@
 
 ---
 
-Null Threat is a free, open-source desktop security scanner built with **Rust (Tauri 2)** and **React + TypeScript**. It analyzes files using four detection engines that run entirely on your machine — no internet connection required, no telemetry, no cloud uploads, and no subscriptions. Licensed under **GPL v3**, Null Threat gives privacy-conscious individuals, developers, IT administrators, and security researchers a transparent alternative to closed-source antivirus tools.
+Null Threat is a free, open-source desktop security scanner built with **Rust (Tauri 2)** and **React + TypeScript**. It analyzes files using four local detection engines — SHA-256 hash lookup, ClamAV, YARA rules, and **multi-stage deep analysis** — entirely on your machine. Deep analysis covers **file identity**, **container structure**, **metadata tags**, and **image steganalysis**. **ClamAV, YARA, ffprobe, ffmpeg, and ExifTool** are bundled in release builds. No internet required after setup, no telemetry, no cloud uploads, and no subscriptions. Licensed under **GPL v3**.
+
+> **Edit marketing copy:** See [docs/PRODUCT-COPY.md](docs/PRODUCT-COPY.md) for hero page text, feature bullets, and changelog.
 
 ---
 
@@ -47,17 +49,18 @@ Null Threat is a free, open-source desktop security scanner built with **Rust (T
 
 ## Features
 
-- 🔍 **Four Local Detection Engines** — SHA-256 hash lookup, ClamAV, YARA rules, and deep file analysis run in parallel on your hardware
-- 🗄️ **500,000+ Hash Signatures** — Local SQLite database sourced from MalwareBazaar and NSRL — no cloud lookup required
-- 🛡️ **ClamAV Integration** — Industry-standard antivirus signatures via bundled or system `clamscan`
-- 📜 **YARA Rule Matching** — Detects polyglot files, packed executables, suspicious metadata, and PE headers inside media containers
-- 🔬 **Deep File Analysis** — Magic byte inspection, Shannon entropy calculation (flags files above 7.2/8.0), and ffprobe-based video container inspection
+- 🔍 **Four Local Detection Engines** — SHA-256 hash lookup, ClamAV, YARA rules, and deep analysis run on your hardware
+- 🔬 **Multi-Stage Deep Analysis** — Expandable breakdown: **Identity** (magic bytes, entropy), **Structure** (MP4/MKV, subtitles, ffprobe), **Metadata** (ExifTool + native), **Steganalysis** (image LSB; video LSB not scored)
+- 📦 **All Tools Bundled** — ClamAV, YARA, ffprobe, ffmpeg, and ExifTool ship with the app — no separate installs
+- 🗄️ **Hash Intelligence** — MalwareBazaar and NSRL signatures in local SQLite — refresh when online, scan offline
+- 🛡️ **ClamAV Integration** — Industry-standard antivirus via bundled `clamscan`
+- 📜 **YARA Rule Matching** — ~23 bundled rules: polyglot files, packers, metadata injection, video-container threats
 - 👁️ **Real-time Folder Watcher** — Scans files the moment they land in watched directories
-- 🔐 **AES-256-GCM Quarantine Vault** — Encrypted isolation with restore, delete, and forensic report export
-- 📊 **0–100 Risk Scoring** — Transparent verdict with per-engine breakdown (Clean 0–20 · Suspicious 21–50 · High Risk 51–80 · Malware 81–100)
-- 📋 **Scan History** — Full SQLite-backed log with filtering, search, and CSV export
-- 📡 **Offline Signature Updates** — MalwareBazaar CSV download with manual import for air-gapped systems
-- 🧙 **Setup Wizard** — Verifies ClamAV and ffprobe installation on first launch
+- 🔐 **AES-256-GCM Quarantine Vault** — Encrypted isolation with restore and delete
+- 📊 **0–100 Risk Score** — Transparent `X/100` scoring with per-engine breakdown (Clean 0–20 · Suspicious 21–50 · High Risk 51–80 · Malware 81–100). Heuristics alone cap at 48 without a signature hit
+- 📋 **Scan History** — SQLite log with search, CSV export, and **permanent clear** in Settings
+- 🧹 **Data & Privacy Controls** — Export or permanently wipe scan history from Settings (quarantine/whitelist preserved)
+- 📡 **Offline Signature Updates** — MalwareBazaar CSV download for air-gapped systems
 - 🌙 **Dark-themed UI** — Purpose-built interface with silver/gold brand system
 
 ---
@@ -66,7 +69,7 @@ Null Threat is a free, open-source desktop security scanner built with **Rust (T
 
 ### Windows
 
-Download the latest `.msi` or `.exe` installer from [Releases](https://github.com/null-threat/null-threat/releases).
+Download the latest `.msi` or `.exe` installer from [Releases](https://github.com/givecursorfree-oss/Null-Threat-Desktop/releases).
 
 ```powershell
 # Or install dependencies and run from source — see Build from Source below
@@ -78,7 +81,7 @@ winget install Gyan.FFmpeg
 
 ### macOS
 
-Download the latest `.dmg` from [Releases](https://github.com/null-threat/null-threat/releases).
+Download the latest `.dmg` from [Releases](https://github.com/givecursorfree-oss/Null-Threat-Desktop/releases).
 
 ```bash
 brew install --cask null-threat
@@ -88,7 +91,7 @@ brew install rust node clamav ffmpeg
 
 ### Linux
 
-Download the latest `.AppImage`, `.deb`, or `.rpm` from [Releases](https://github.com/null-threat/null-threat/releases).
+Download the latest `.AppImage`, `.deb`, or `.rpm` from [Releases](https://github.com/givecursorfree-oss/Null-Threat-Desktop/releases).
 
 ```bash
 # Debian/Ubuntu (.deb)
@@ -105,7 +108,7 @@ chmod +x NullThreat-*.AppImage && ./NullThreat-*.AppImage
 
 ## Dependencies
 
-Null Threat bundles **ClamAV**, **YARA**, and **ffprobe** in release builds (CI downloads them automatically). End users do not install these separately.
+Null Threat bundles **ClamAV**, **YARA**, **ffprobe**, **ffmpeg**, and **ExifTool** in release builds (CI downloads them automatically). End users do not install these separately.
 
 For **local development builds**, bundle all scanner tools with one command:
 
@@ -126,7 +129,9 @@ chmod +x scripts/setup-scanner-tools.sh
 |---|---|---|
 | **ClamAV** | Antivirus signature scanning | Bundled |
 | **YARA** | Rule-based file matching | Bundled |
-| **ffprobe** | Video container analysis (PE/ZIP inside media) | Bundled |
+| **ffprobe** | Video container analysis | Bundled |
+| **ffmpeg** | Video tooling (frame pipeline) | Bundled |
+| **ExifTool** | Metadata tag extraction | Bundled |
 
 Individual setup scripts (`setup-clamav*`, `setup-yara-ffprobe*`) remain available if you only need one tool.
 
@@ -146,13 +151,13 @@ Individual setup scripts (`setup-clamav*`, `setup-yara-ffprobe*`) remain availab
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/null-threat/null-threat.git
-cd null-threat
+git clone https://github.com/givecursorfree-oss/Null-Threat-Desktop.git
+cd Null-Threat-Desktop
 
 # 2. Install frontend dependencies
 npm install
 
-# 3. Bundle scanner tools (ClamAV + YARA + ffprobe)
+# 3. Bundle scanner tools (ClamAV + YARA + ffprobe + ffmpeg + ExifTool)
 # Windows: .\scripts\setup-scanner-tools.ps1
 # Linux/macOS: ./scripts/setup-scanner-tools.sh
 
@@ -278,6 +283,7 @@ See [LICENSE](LICENSE) for the full license text.
 <p align="center">
   Built with Rust, React, and a healthy paranoia about file integrity.<br />
   <a href="website/index.html">Marketing Site</a> •
+  <a href="docs/PRODUCT-COPY.md">Product Copy</a> •
   <a href="docs/brand/BRAND-IDENTITY.md">Brand Guide</a> •
   <a href="docs/design/tokens.css">Design Tokens</a>
 </p>

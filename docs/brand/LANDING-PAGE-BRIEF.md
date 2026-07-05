@@ -1,6 +1,8 @@
 # Null Threat — Landing Page Design Brief
 
-> Section-by-section design brief for the Null Threat marketing website. Implementation reference: `website/index.html` (SENTRY-layout fidelity, Null Threat brand).
+> Section-by-section design brief for the Null Threat marketing website.  
+> Implementation reference: `website/index.html`  
+> **Editable copy (hero, features, changelog):** [`docs/PRODUCT-COPY.md`](../PRODUCT-COPY.md) — update that file first, then sync here.
 
 ---
 
@@ -374,4 +376,4 @@ Full-bleed background image with overlay. Centered content stack.
 
 ---
 
-*Document version 1.0 — Null Threat Landing Page Design Brief*
+*Document version 1.1 — Null Threat Landing Page Design Brief. Copy synced 2026-07-06 via PRODUCT-COPY.md.*
