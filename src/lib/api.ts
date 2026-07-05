@@ -211,43 +211,67 @@ function buildDeepChecks(raw: RustScanResult): DeepAnalysisCheck[] {
       name: "Identity",
       verdict: engineVerdict(identityScore, identityDetected),
       score: identityScore,
-      details:
-        identityParts.length > 0
-          ? identityParts.join("; ")
+      summary:
+        identityDetected
+          ? `${identityParts.length} identity signal${identityParts.length === 1 ? "" : "s"} found`
           : "File type and entropy look normal",
+      items:
+        identityParts.length > 0
+          ? identityParts
+          : raw.deep_analysis.magic_bytes.detected_type
+            ? [`Detected content type: ${raw.deep_analysis.magic_bytes.detected_type}`]
+            : ["No extension or magic-byte mismatch detected"],
     },
     {
       name: "Structure",
       verdict: engineVerdict(structureScore, structureDetected),
       score: structureScore,
-      details:
+      summary:
         structureParts.length > 0
-          ? structureParts.join("; ")
+          ? `${structureParts.length} structural issue${structureParts.length === 1 ? "" : "s"} found`
           : raw.deep_analysis.structure.applicable
             ? "Container structure validated"
             : "No structural parser applied for this file type",
+      items:
+        structureParts.length > 0
+          ? structureParts
+          : raw.deep_analysis.structure.applicable
+            ? ["ISO-BMFF / EBML container walk completed with no anomalies"]
+            : ["This file type is not parsed for container structure"],
     },
     {
       name: "Metadata",
       verdict: engineVerdict(metadataScore, metadataDetected),
       score: metadataScore,
-      details:
+      summary:
         metadataParts.length > 0
-          ? metadataParts.join("; ")
+          ? `${metadataParts.length} metadata concern${metadataParts.length === 1 ? "" : "s"} found`
           : raw.deep_analysis.metadata.scanned
             ? `No suspicious metadata (${raw.deep_analysis.metadata.tool})`
             : "Metadata scan not applicable",
+      items:
+        metadataParts.length > 0
+          ? metadataParts
+          : raw.deep_analysis.metadata.scanned
+            ? [`Scanned with ${raw.deep_analysis.metadata.tool} — no hidden scripts, URLs, or payloads in tags`]
+            : ["Metadata extraction was not run for this file type"],
     },
     {
       name: "Steganography",
       verdict: engineVerdict(stegScore, stegDetected),
       score: stegScore,
-      details:
-        stegParts.length > 0
-          ? stegParts.join("; ")
+      summary:
+        stegDetected
+          ? "Possible hidden data in image LSB plane"
           : raw.deep_analysis.steganalysis.analyzed
-            ? "No statistical signs of LSB steganography"
+            ? "No LSB steganography detected"
             : "Steganalysis not applicable for this file type",
+      items:
+        stegParts.length > 0
+          ? stegParts
+          : raw.deep_analysis.steganalysis.analyzed
+            ? ["Chi-square and RS analysis found no statistical signs of LSB embedding"]
+            : ["Steganalysis applies to images only; video LSB scoring is disabled to avoid false positives"],
     },
   ];
 }

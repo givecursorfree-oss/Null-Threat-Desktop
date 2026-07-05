@@ -19,7 +19,10 @@ export interface DeepAnalysisCheck {
   name: "Identity" | "Structure" | "Metadata" | "Steganography";
   verdict: Verdict;
   score: number;
-  details: string;
+  /** One-line summary shown in the sub-row header. */
+  summary: string;
+  /** Detailed findings shown when expanded. */
+  items: string[];
 }
 
 export interface EngineResult {

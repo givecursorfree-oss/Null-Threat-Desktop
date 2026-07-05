@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   FileText,
   ShieldCheck,
@@ -6,14 +7,16 @@ import {
   Trash2,
   ShieldAlert,
   CheckCircle,
+  ChevronDown,
 } from "lucide-react";
 import ConfidenceMeter from "./ConfidenceMeter";
 import ThreatCard from "./ThreatCard";
 import VerdictBadge from "./VerdictBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { formatRiskScore } from "@/lib/riskScore";
-import type { ScanResult as ScanResultType, ThreatInfo } from "../types";
+import type { DeepAnalysisCheck, ScanResult as ScanResultType, ThreatInfo, Verdict } from "../types";
 
 interface ScanResultProps {
   result: ScanResultType;
@@ -30,6 +33,68 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function isDeepCheckFlagged(verdict: Verdict): boolean {
+  return verdict === "detected" || verdict === "suspicious" || verdict === "critical";
+}
+
+function DeepCheckRow({ check }: { check: DeepAnalysisCheck }) {
+  const [open, setOpen] = useState(isDeepCheckFlagged(check.verdict));
+  const flagged = isDeepCheckFlagged(check.verdict);
+
+  return (
+    <div
+      className={cn(
+        "overflow-hidden rounded-md border",
+        flagged ? "border-destructive/30 bg-destructive/5" : "border-border/60 bg-background/40"
+      )}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-start justify-between gap-2 px-3 py-2 text-left transition-colors hover:bg-white/[0.03]"
+        aria-expanded={open}
+      >
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-foreground">{check.name}</span>
+            {check.score > 0 && (
+              <span className="font-mono text-[10px] text-muted-foreground">+{check.score}</span>
+            )}
+          </div>
+          <p className="text-[11px] leading-snug text-muted-foreground">{check.summary}</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2 pt-0.5">
+          <VerdictBadge verdict={check.verdict} />
+          <ChevronDown
+            className={cn(
+              "h-3.5 w-3.5 text-muted-foreground transition-transform duration-200",
+              open && "rotate-180"
+            )}
+          />
+        </div>
+      </button>
+
+      {open && (
+        <div className="border-t border-border/50 px-3 py-2">
+          <ul className="space-y-1.5">
+            {check.items.map((item, i) => (
+              <li key={i} className="flex gap-2 text-[11px] leading-snug text-foreground">
+                <span
+                  className={cn(
+                    "mt-1.5 h-1 w-1 shrink-0 rounded-full",
+                    flagged ? "bg-destructive" : "bg-muted-foreground"
+                  )}
+                />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ScanResult({
   result,
   actionLoading,
@@ -38,6 +103,9 @@ export default function ScanResult({
   onTrust,
   onViewFolder,
 }: ScanResultProps) {
+  const deepHasFlags = result.deepChecks.some((c) => isDeepCheckFlagged(c.verdict));
+  const [deepExpanded, setDeepExpanded] = useState(deepHasFlags);
+
   const threatInfo: ThreatInfo | null =
     (result.verdict === "detected" ||
       result.verdict === "suspicious" ||
@@ -99,54 +167,78 @@ export default function ScanResult({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 gap-2">
-            {result.engines.map((engine) => (
-              <div
-                key={engine.engineName}
-                className="space-y-1 rounded-md bg-secondary px-3 py-2"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-foreground">{engine.engineName}</span>
-                  <VerdictBadge verdict={engine.verdict} />
+            {result.engines.map((engine) => {
+              const isDeep = engine.engineName === "Deep Analysis";
+
+              if (isDeep && result.deepChecks.length > 0) {
+                return (
+                  <div key={engine.engineName} className="overflow-hidden rounded-md bg-secondary">
+                    <button
+                      type="button"
+                      onClick={() => setDeepExpanded((v) => !v)}
+                      className="flex w-full items-start justify-between gap-2 px-3 py-2 text-left transition-colors hover:bg-white/[0.03]"
+                      aria-expanded={deepExpanded}
+                    >
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-medium text-foreground">
+                            {engine.engineName}
+                          </span>
+                          {!deepExpanded && (
+                            <span className="text-[10px] text-muted-foreground">
+                              Tap to view breakdown
+                            </span>
+                          )}
+                        </div>
+                        {engine.details && (
+                          <p className="text-[11px] leading-snug text-muted-foreground">
+                            {engine.details}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2 pt-0.5">
+                        <VerdictBadge verdict={engine.verdict} />
+                        <ChevronDown
+                          className={cn(
+                            "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                            deepExpanded && "rotate-180"
+                          )}
+                        />
+                      </div>
+                    </button>
+
+                    {deepExpanded && (
+                      <div className="space-y-2 border-t border-border/50 px-3 py-3">
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          What we checked in this file
+                        </p>
+                        {result.deepChecks.map((check) => (
+                          <DeepCheckRow key={check.name} check={check} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={engine.engineName}
+                  className="space-y-1 rounded-md bg-secondary px-3 py-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-foreground">{engine.engineName}</span>
+                    <VerdictBadge verdict={engine.verdict} />
+                  </div>
+                  {engine.details && (
+                    <p className="text-[11px] leading-snug text-muted-foreground">{engine.details}</p>
+                  )}
                 </div>
-                {engine.details && (
-                  <p className="text-[11px] leading-snug text-muted-foreground">{engine.details}</p>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
-
-      {result.deepChecks.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle>Deep Analysis Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-2">
-              {result.deepChecks.map((check) => (
-                <div
-                  key={check.name}
-                  className="space-y-1 rounded-md bg-secondary px-3 py-2"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-medium text-foreground">{check.name}</span>
-                    <div className="flex items-center gap-2">
-                      {check.score > 0 && (
-                        <span className="font-mono text-[10px] text-muted-foreground">
-                          +{check.score}
-                        </span>
-                      )}
-                      <VerdictBadge verdict={check.verdict} />
-                    </div>
-                  </div>
-                  <p className="text-[11px] leading-snug text-muted-foreground">{check.details}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {result.findings.length > 0 && result.verdict !== "clean" && (
         <Card>
