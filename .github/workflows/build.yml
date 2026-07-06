@@ -25,7 +25,7 @@ jobs:
           cache: npm
 
       - name: Run scanner unit tests
-        run: cd src-tauri && cargo test scanner::
+        run: cd src-tauri && cargo test 'scanner::'
 
       - name: Typecheck frontend
         run: npm ci && npm run build:vite
