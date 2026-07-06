@@ -386,7 +386,9 @@ mod tests {
         assert_eq!(result.method, "video-frames");
         assert!(!result.suspicious, "video LSB must not contribute to risk score");
         assert!(
-            result.details.iter().any(|d| d.contains("not scored")),
+            result.details.iter().any(|d| {
+                d.contains("not scored") || d.contains("ffmpeg not available")
+            }),
             "expected explanatory skip message, got {:?}",
             result.details
         );
