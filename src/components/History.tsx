@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { Search, Download, ChevronLeft, ChevronRight } from "lucide-react";
-import { fetchScanHistory } from "../lib/api";
+import { Search, Download, ChevronLeft, ChevronRight, FileJson } from "lucide-react";
+import { fetchScanHistory, exportScanReportJson, exportScanReportPdf } from "../lib/api";
+import { downloadBase64Pdf, downloadTextFile, scanReportBasename } from "../lib/exportReport";
 import VerdictBadge from "./VerdictBadge";
 import PageHeader from "./PageHeader";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,29 @@ export default function History() {
   const [verdictFilter, setVerdictFilter] = useState<Verdict | "all">("all");
   const [page, setPage] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [exportingId, setExportingId] = useState<string | null>(null);
+
+  const handleExportJson = async (entry: ScanHistoryEntry) => {
+    setExportingId(entry.id);
+    try {
+      const json = await exportScanReportJson(entry.id);
+      const base = scanReportBasename(entry.fileName, entry.id);
+      downloadTextFile(json, `${base}.json`, "application/json");
+    } finally {
+      setExportingId(null);
+    }
+  };
+
+  const handleExportPdf = async (entry: ScanHistoryEntry) => {
+    setExportingId(entry.id);
+    try {
+      const pdf = await exportScanReportPdf(entry.id);
+      const base = scanReportBasename(entry.fileName, entry.id);
+      downloadBase64Pdf(pdf, `${base}.pdf`);
+    } finally {
+      setExportingId(null);
+    }
+  };
 
   useEffect(() => {
     fetchScanHistory(500)
@@ -123,17 +147,18 @@ export default function History() {
         </Card>
       ) : (
         <div className="space-y-1.5">
-          <div className="hidden px-4 py-2.5 text-left text-xs text-muted-foreground sm:grid sm:grid-cols-[1fr_120px_80px_90px_120px] sm:gap-3">
+          <div className="hidden px-4 py-2.5 text-left text-xs text-muted-foreground sm:grid sm:grid-cols-[1fr_120px_80px_90px_100px_72px] sm:gap-3">
             <span>File</span>
             <span>Date</span>
             <span>Risk</span>
             <span>Verdict</span>
             <span>Action</span>
+            <span>Report</span>
           </div>
           {pageData.map((entry) => (
             <div
               key={entry.id}
-              className="rounded-md border border-border bg-card/80 px-3 py-3 sm:grid sm:grid-cols-[1fr_120px_80px_90px_120px] sm:items-center sm:gap-3 sm:px-4 sm:py-2.5"
+              className="rounded-md border border-border bg-card/80 px-3 py-3 sm:grid sm:grid-cols-[1fr_120px_80px_90px_100px_72px] sm:items-center sm:gap-3 sm:px-4 sm:py-2.5"
             >
               <div className="min-w-0 space-y-1 sm:space-y-0">
                 <span className="block truncate text-sm text-foreground">
@@ -164,6 +189,30 @@ export default function History() {
                 <span className="text-xs capitalize text-muted-foreground">
                   {entry.actionTaken || "none"}
                 </span>
+                <div className="flex gap-1 justify-self-start sm:justify-self-auto">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    disabled={exportingId === entry.id}
+                    onClick={() => void handleExportJson(entry)}
+                    aria-label="Export JSON report"
+                  >
+                    <FileJson className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    disabled={exportingId === entry.id}
+                    onClick={() => void handleExportPdf(entry)}
+                    aria-label="Export PDF report"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
             </div>
           ))}

@@ -1,11 +1,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use null_threat::app_paths::AppPaths;
 use null_threat::commands::{self, AppState};
 use null_threat::db::Database;
 use null_threat::setup;
 use null_threat::tray;
 use null_threat::watcher::FileWatcher;
-use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::Manager;
 use tauri_plugin_notification::NotificationExt;
@@ -17,28 +17,22 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .setup(|app| {
-            let app_data_dir = app
-                .path()
-                .app_data_dir()
-                .unwrap_or_else(|_| PathBuf::from("."));
+            let paths = AppPaths::resolve(app).expect("Failed to resolve application paths");
 
             let db = Arc::new(
-                Database::new(&app_data_dir).expect("Failed to initialize database"),
+                Database::new(&paths.app_data_dir).expect("Failed to initialize database"),
             );
 
             setup::ensure_first_run_setup(&db).expect("First-run setup failed");
 
-            let rules_dir = app_data_dir.join("yara_rules");
-            let resource_dir = app.path().resource_dir().ok();
-            setup::ensure_yara_rules(&rules_dir, resource_dir.as_deref());
+            setup::ensure_yara_rules(&paths.rules_dir, paths.resource_dir.as_deref());
 
-            let clamav_db_dir = app_data_dir.join("clamav_db");
-            let clamav_runtime_dir = app_data_dir.join("clamav_runtime");
-            let resource_dir = app.path().resource_dir().ok();
-            let resource_clamav = resource_dir.as_ref().map(|r| r.join("clamav"));
-
-            setup::ensure_clamav_runtime(&clamav_runtime_dir, resource_dir.as_deref());
-            setup::copy_bundled_clamav_db(&clamav_db_dir, resource_clamav);
+            setup::ensure_clamav_runtime(
+                &paths.clamav_runtime_dir,
+                paths.resource_dir.as_deref(),
+                &paths.clamav_db_dir,
+            );
+            setup::copy_bundled_clamav_db(&paths.clamav_db_dir, paths.resource_clamav());
 
             #[cfg(windows)]
             null_threat::notifications::configure_windows(app.config().identifier.as_str());
@@ -57,10 +51,10 @@ fn main() {
             if realtime_enabled {
                 let app_handle = app.handle().clone();
                 let db_clone = db.clone();
-                let rules_clone = rules_dir.clone();
-                let clamav_db_clone = clamav_db_dir.clone();
-                let clamav_runtime_clone = clamav_runtime_dir.clone();
-                let resource_clone = resource_dir.clone();
+                let rules_clone = paths.rules_dir.clone();
+                let clamav_db_clone = paths.clamav_db_dir.clone();
+                let clamav_runtime_clone = paths.clamav_runtime_dir.clone();
+                let resource_clone = paths.resource_dir.clone();
                 let watcher_clone = watcher.clone();
                 if let Err(e) = watcher_clone.start(
                     app_handle,
@@ -77,11 +71,11 @@ fn main() {
             app.manage(AppState {
                 db: db.clone(),
                 watcher,
-                app_data_dir,
-                rules_dir: rules_dir.clone(),
-                clamav_db_dir: clamav_db_dir.clone(),
-                clamav_runtime_dir: clamav_runtime_dir.clone(),
-                resource_dir,
+                app_data_dir: paths.app_data_dir,
+                rules_dir: paths.rules_dir,
+                clamav_db_dir: paths.clamav_db_dir,
+                clamav_runtime_dir: paths.clamav_runtime_dir,
+                resource_dir: paths.resource_dir,
             });
 
             tray::setup(app)?;
@@ -109,6 +103,8 @@ fn main() {
             commands::remove_from_whitelist,
             commands::get_whitelist,
             commands::export_history_csv,
+            commands::export_scan_report_json,
+            commands::export_scan_report_pdf,
             commands::clear_scan_history,
             commands::check_dependencies,
             commands::get_signature_status,

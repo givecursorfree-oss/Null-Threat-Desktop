@@ -40,6 +40,15 @@
       "../rules/",
       "resources/yara_rules/*",
       "resources/clamav/*"
-    ]
+    ],
+    "windows": {
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "http://timestamp.digicert.com"
+    },
+    "macOS": {
+      "entitlements": "./Entitlements.plist",
+      "hardenedRuntime": true,
+      "signingIdentity": "-"
+    }
   }
 }

@@ -1,3 +1,5 @@
+use crate::app_paths;
+use crate::bundle_paths;
 use crate::db::Database;
 use std::path::{Path, PathBuf};
 
@@ -52,8 +54,13 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
     std::fs::create_dir_all(dst)?;
     for entry in std::fs::read_dir(src)? {
         let entry = entry?;
+        let file_name = entry.file_name();
+        let name = file_name.to_string_lossy();
+        if bundle_paths::is_excluded_bundle_file(&name) {
+            continue;
+        }
         let src_path = entry.path();
-        let dst_path = dst.join(entry.file_name());
+        let dst_path = dst.join(&file_name);
         if entry.file_type()?.is_dir() {
             copy_dir_recursive(&src_path, &dst_path)?;
         } else {
@@ -128,30 +135,7 @@ fn sync_scanner_tools(dest: &Path, resource_dir: Option<&Path>) {
 }
 
 fn clamav_runtime_sources(resource_dir: Option<&Path>) -> Vec<PathBuf> {
-    let platform_dir = {
-        #[cfg(target_os = "windows")]
-        {
-            "binaries/windows"
-        }
-        #[cfg(target_os = "macos")]
-        {
-            "binaries/macos"
-        }
-        #[cfg(target_os = "linux")]
-        {
-            "binaries/linux"
-        }
-        #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
-        {
-            "binaries/linux"
-        }
-    };
-
-    let mut sources = vec![PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(platform_dir)];
-    if let Some(res) = resource_dir {
-        sources.push(res.join(platform_dir));
-    }
-    sources
+    bundle_paths::bundled_binaries_dirs(resource_dir)
 }
 
 fn clamscan_name() -> &'static str {
@@ -166,7 +150,7 @@ fn clamscan_name() -> &'static str {
 }
 
 /// Installs bundled scanner runtimes (ClamAV + YARA/ffprobe/ffmpeg/exiftool) into app data.
-pub fn ensure_clamav_runtime(dest: &Path, resource_dir: Option<&Path>) -> bool {
+pub fn ensure_clamav_runtime(dest: &Path, resource_dir: Option<&Path>, db_dir: &Path) -> bool {
     std::fs::create_dir_all(dest).ok();
 
     // Always merge newly bundled tools (exiftool, ffmpeg, etc.) even when ClamAV already exists.
@@ -184,6 +168,7 @@ pub fn ensure_clamav_runtime(dest: &Path, resource_dir: Option<&Path>) -> bool {
         }
     };
     if already_valid {
+        app_paths::ensure_freshclam_config(dest, db_dir);
         return true;
     }
 
@@ -197,6 +182,7 @@ pub fn ensure_clamav_runtime(dest: &Path, resource_dir: Option<&Path>) -> bool {
         }
         if copy_dir_recursive(&source, dest).is_ok() {
             log::info!("Installed ClamAV runtime at {}", dest.display());
+            app_paths::ensure_freshclam_config(dest, db_dir);
             let valid = dest.join(clamscan_name()).is_file();
             #[cfg(target_os = "windows")]
             {
@@ -209,6 +195,7 @@ pub fn ensure_clamav_runtime(dest: &Path, resource_dir: Option<&Path>) -> bool {
         }
     }
 
+    app_paths::ensure_freshclam_config(dest, db_dir);
     false
 }
 
@@ -219,11 +206,7 @@ pub fn copy_bundled_clamav_db(dest: &Path, resource_clamav: Option<PathBuf>) {
         return;
     }
 
-    let mut sources: Vec<PathBuf> = Vec::new();
-    if let Some(r) = resource_clamav {
-        sources.push(r);
-    }
-    sources.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/clamav"));
+    let sources = bundle_paths::clamav_db_sources(resource_clamav);
 
     for source in sources {
         if !source.exists() {
@@ -280,29 +263,7 @@ pub fn copy_bundled_rules(dest: &Path, resource_dir: Option<&Path>) -> u32 {
 }
 
 fn yara_rule_sources(resource_dir: Option<&Path>) -> Vec<PathBuf> {
-    let mut sources: Vec<PathBuf> = Vec::new();
-
-    sources.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../rules"));
-    sources.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/yara_rules"));
-
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(exe_dir) = exe.parent() {
-            sources.push(exe_dir.join("_up_").join("rules"));
-            sources.push(exe_dir.join("resources").join("yara_rules"));
-            sources.push(exe_dir.join("yara_rules"));
-        }
-    }
-
-    if let Some(res) = resource_dir {
-        sources.push(res.join("yara_rules"));
-        sources.push(res.join("rules"));
-        sources.push(res.join("_up_").join("rules"));
-    }
-
-    sources.push(PathBuf::from("rules"));
-    sources.push(PathBuf::from("../rules"));
-
-    sources
+    bundle_paths::yara_rule_sources(resource_dir)
 }
 
 fn copy_yara_rule_files(source: &Path, dest: &Path) -> u32 {

@@ -12,6 +12,7 @@ pub struct ScanRecord {
     pub threat_name: Option<String>,
     pub action_taken: String,
     pub engine_results: String,
+    pub report_json: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

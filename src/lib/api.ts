@@ -56,6 +56,7 @@ interface RustScanResult {
   };
   findings: string[];
   scan_source?: string;
+  scan_id?: number | null;
 }
 
 interface RustDashboardStats {
@@ -385,7 +386,7 @@ export function mapScanResult(raw: RustScanResult): ScanResult {
   const deepChecks = buildDeepChecks(raw);
 
   return {
-    id: crypto.randomUUID(),
+    id: raw.scan_id != null ? String(raw.scan_id) : crypto.randomUUID(),
     fileName: raw.filename,
     filePath: raw.filepath,
     fileSize: raw.file_size ?? 0,
@@ -573,6 +574,14 @@ export async function removeFromWhitelist(id: number): Promise<void> {
 
 export async function exportHistoryCsv(): Promise<string> {
   return invoke<string>("export_history_csv");
+}
+
+export async function exportScanReportJson(scanId: string): Promise<string> {
+  return invoke<string>("export_scan_report_json", { scanId: Number(scanId) });
+}
+
+export async function exportScanReportPdf(scanId: string): Promise<string> {
+  return invoke<string>("export_scan_report_pdf", { scanId: Number(scanId) });
 }
 
 export async function clearScanHistory(): Promise<number> {

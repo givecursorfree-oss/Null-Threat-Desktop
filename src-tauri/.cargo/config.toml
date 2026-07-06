@@ -1,0 +1,3 @@
+# User-specific home paths are remapped at build time via scripts/tauri-build.mjs
+# (RUSTFLAGS) and CI env RUSTFLAGS. Do not use C:\Users\=. — it leaves the
+# username segment (e.g. .\msara\.cargo\...) in panic strings.

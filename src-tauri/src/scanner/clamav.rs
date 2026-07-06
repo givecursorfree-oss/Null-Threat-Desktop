@@ -11,24 +11,21 @@ pub enum ClamResult {
 
 const DB_EXTENSIONS: &[&str] = &["cvd", "cld", "cvdb"];
 
-fn platform_binaries_dir() -> &'static str {
-    #[cfg(target_os = "windows")]
-    {
-        "binaries/windows"
-    }
-    #[cfg(target_os = "macos")]
-    {
-        "binaries/macos"
-    }
-    #[cfg(target_os = "linux")]
-    {
-        "binaries/linux"
-    }
-    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
-    {
-        "binaries/linux"
-    }
-}
+#[cfg(debug_assertions)]
+const CLAMAV_MISSING_MSG: &str =
+    "Bundled ClamAV not found — run the platform setup script and rebuild";
+
+#[cfg(not(debug_assertions))]
+const CLAMAV_MISSING_MSG: &str =
+    "Bundled ClamAV not found — restart the app or reinstall from the official installer";
+
+#[cfg(debug_assertions)]
+const CLAMAV_CERTS_MISSING_MSG: &str =
+    "Bundled ClamAV certificates missing — run setup-clamav and rebuild";
+
+#[cfg(not(debug_assertions))]
+const CLAMAV_CERTS_MISSING_MSG: &str =
+    "Bundled ClamAV certificates missing — reinstall from the official installer";
 
 fn clamscan_binary_name() -> &'static str {
     #[cfg(target_os = "windows")]
@@ -101,8 +98,10 @@ fn bundled_runtime_candidates(runtime_dir: Option<&Path>) -> Vec<PathBuf> {
         dirs.push(rt.to_path_buf());
     }
 
-    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    dirs.push(manifest.join(platform_binaries_dir()));
+    #[cfg(debug_assertions)]
+    if let Some(manifest) = crate::bundle_paths::dev_manifest_root() {
+        dirs.push(manifest.join(crate::bundle_paths::platform_binaries_dir()));
+    }
 
     dirs
 }
@@ -201,9 +200,7 @@ pub async fn scan_with_clamav(
     let binary = match resolve_clamscan_binary(runtime_dir) {
         Some(p) => p,
         None => {
-            return ClamResult::Unavailable(
-                "Bundled ClamAV not found — run the platform setup script and rebuild".into(),
-            );
+            return ClamResult::Unavailable(CLAMAV_MISSING_MSG.into());
         }
     };
 
@@ -220,9 +217,7 @@ pub async fn scan_with_clamav(
 
     #[cfg(target_os = "windows")]
     if !runtime_root.join("certs").is_dir() {
-        return ClamResult::Unavailable(
-            "Bundled ClamAV certificates missing — run setup-clamav and rebuild".into(),
-        );
+        return ClamResult::Unavailable(CLAMAV_CERTS_MISSING_MSG.into());
     }
 
     let scan_path = normalize_scan_path(file_path);

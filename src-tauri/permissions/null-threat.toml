@@ -22,6 +22,8 @@ commands.allow = [
   "remove_from_whitelist",
   "get_whitelist",
   "export_history_csv",
+  "export_scan_report_json",
+  "export_scan_report_pdf",
   "clear_scan_history",
   "check_dependencies",
   "get_signature_status",

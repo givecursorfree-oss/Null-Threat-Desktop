@@ -1,28 +1,9 @@
+pub mod keychain;
 pub mod vault;
 
 use crate::db::Database;
-use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-
-/// Derive a deterministic encryption key from a machine-specific seed.
-/// In production, this should use a proper key management system.
-fn get_vault_key() -> [u8; 32] {
-    let seed = format!(
-        "nullthreat-vault-{}",
-        whoami()
-    );
-    let hash = Sha256::digest(seed.as_bytes());
-    let mut key = [0u8; 32];
-    key.copy_from_slice(&hash);
-    key
-}
-
-fn whoami() -> String {
-    std::env::var("USERNAME")
-        .or_else(|_| std::env::var("USER"))
-        .unwrap_or_else(|_| "nullthreat-default".into())
-}
 
 fn quarantine_dir(app_data_dir: &Path) -> PathBuf {
     let dir = app_data_dir.join("quarantine");
@@ -56,7 +37,7 @@ pub fn quarantine_file(
     let quarantine_filename = format!("{timestamp}_{filename}.quarantine");
     let quarantine_path = quarantine_dir(app_data_dir).join(&quarantine_filename);
 
-    let key = get_vault_key();
+    let key = keychain::get_vault_key(app_data_dir)?;
     vault::encrypt_file(&source, &quarantine_path, &key)?;
 
     std::fs::remove_file(&source)
@@ -70,6 +51,7 @@ pub fn quarantine_file(
 }
 
 pub fn restore_file(
+    app_data_dir: &Path,
     db: &Arc<Database>,
     entry_id: i64,
 ) -> Result<String, String> {
@@ -83,9 +65,8 @@ pub fn restore_file(
     }
 
     let restore_path = PathBuf::from(&entry.original_path);
-    let key = get_vault_key();
-
-    vault::decrypt_file(&quarantine_path, &restore_path, &key)?;
+    let keys = keychain::vault_keys_for_decrypt(app_data_dir);
+    vault::decrypt_file_with_keys(&quarantine_path, &restore_path, &keys)?;
 
     std::fs::remove_file(&quarantine_path).ok();
 

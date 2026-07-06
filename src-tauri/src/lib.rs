@@ -1,9 +1,12 @@
+pub mod app_paths;
+pub mod bundle_paths;
 pub mod commands;
 pub mod db;
 pub mod hash_intel;
 pub mod notifications;
 pub mod process_util;
 pub mod quarantine;
+pub mod report;
 pub mod scanner;
 pub mod setup;
 pub mod signatures;

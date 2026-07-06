@@ -37,6 +37,8 @@ pub struct ScanResult {
     pub engine_results: EngineResults,
     pub findings: Vec<String>,
     pub scan_source: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scan_id: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -163,6 +165,7 @@ pub async fn run_scan_pipeline(
             },
             findings: vec![],
             scan_source: scan_source.to_string(),
+            scan_id: None,
         });
     }
 
@@ -214,6 +217,7 @@ pub async fn run_scan_pipeline(
         engine_results,
         findings,
         scan_source: scan_source.to_string(),
+        scan_id: None,
     };
 
     if let Err(e) = app.emit("scan-complete", &result) {

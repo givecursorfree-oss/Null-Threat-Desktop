@@ -1,23 +1,9 @@
+use crate::bundle_paths;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 pub fn platform_binaries_dir() -> &'static str {
-    #[cfg(target_os = "windows")]
-    {
-        "binaries/windows"
-    }
-    #[cfg(target_os = "macos")]
-    {
-        "binaries/macos"
-    }
-    #[cfg(target_os = "linux")]
-    {
-        "binaries/linux"
-    }
-    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
-    {
-        "binaries/linux"
-    }
+    bundle_paths::platform_binaries_dir()
 }
 
 fn tool_filename(base: &str) -> String {
@@ -36,9 +22,10 @@ fn bundled_runtime_candidates(runtime_dir: Option<&Path>) -> Vec<PathBuf> {
     if let Some(rt) = runtime_dir {
         dirs.push(rt.to_path_buf());
     }
-    dirs.push(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(platform_binaries_dir()),
-    );
+    #[cfg(debug_assertions)]
+    if let Some(manifest) = bundle_paths::dev_manifest_root() {
+        dirs.push(manifest.join(bundle_paths::platform_binaries_dir()));
+    }
     dirs
 }
 

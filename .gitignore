@@ -38,6 +38,7 @@ src-tauri/target/
 
 # Bundled ClamAV artifacts (populate via scripts/setup-clamav*.sh|ps1)
 src-tauri/binaries/**/*.exe
+src-tauri/binaries/**/freshclam.conf
 src-tauri/binaries/windows/exiftool_files/*
 src-tauri/binaries/linux/clamscan
 src-tauri/binaries/linux/freshclam

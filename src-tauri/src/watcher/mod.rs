@@ -198,6 +198,9 @@ impl FileWatcher {
                     match scan_result {
                         Ok(result) => {
                             let filename = &result.filename;
+                            let engine_json =
+                                serde_json::to_string(&result.engine_results).unwrap_or_default();
+                            let report_json = crate::report::stored_report_json(&result);
                             let _ = db_for_scan.insert_scan_record(
                                 filename,
                                 &result.filepath,
@@ -206,7 +209,8 @@ impl FileWatcher {
                                 &result.verdict,
                                 result.threat_name.as_deref(),
                                 "auto_scan",
-                                &serde_json::to_string(&result.engine_results).unwrap_or_default(),
+                                &engine_json,
+                                Some(&report_json),
                             );
                         }
                         Err(e) => {

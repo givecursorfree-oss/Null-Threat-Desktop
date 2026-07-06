@@ -38,6 +38,22 @@ pub fn encrypt_file(input_path: &Path, output_path: &Path, key: &[u8; 32]) -> Re
     Ok(())
 }
 
+/// Try each key in order (supports migration from legacy username-derived keys).
+pub fn decrypt_file_with_keys(
+    input_path: &Path,
+    output_path: &Path,
+    keys: &[[u8; 32]],
+) -> Result<(), String> {
+    let mut last_err = "No vault keys available".to_string();
+    for key in keys {
+        match decrypt_file(input_path, output_path, key) {
+            Ok(()) => return Ok(()),
+            Err(e) => last_err = e,
+        }
+    }
+    Err(last_err)
+}
+
 /// Decrypt a .quarantine file back to original bytes.
 pub fn decrypt_file(input_path: &Path, output_path: &Path, key: &[u8; 32]) -> Result<(), String> {
     let data =

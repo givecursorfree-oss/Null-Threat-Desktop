@@ -17,21 +17,59 @@ impl Database {
         threat_name: Option<&str>,
         action_taken: &str,
         engine_results: &str,
+        report_json: Option<&str>,
     ) -> SqliteResult<i64> {
         let conn = self.conn.lock().unwrap();
         let timestamp = Utc::now().to_rfc3339();
         conn.execute(
-            "INSERT INTO scan_history (filename, filepath, sha256, timestamp, risk_score, verdict, threat_name, action_taken, engine_results)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-            params![filename, filepath, sha256, timestamp, risk_score, verdict, threat_name, action_taken, engine_results],
+            "INSERT INTO scan_history (filename, filepath, sha256, timestamp, risk_score, verdict, threat_name, action_taken, engine_results, report_json)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+            params![
+                filename,
+                filepath,
+                sha256,
+                timestamp,
+                risk_score,
+                verdict,
+                threat_name,
+                action_taken,
+                engine_results,
+                report_json
+            ],
         )?;
         Ok(conn.last_insert_rowid())
+    }
+
+    pub fn get_scan_record(&self, id: i64) -> SqliteResult<Option<ScanRecord>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, filename, filepath, sha256, timestamp, risk_score, verdict, threat_name, action_taken, engine_results, report_json
+             FROM scan_history WHERE id = ?1",
+        )?;
+        let mut rows = stmt.query(params![id])?;
+        if let Some(row) = rows.next()? {
+            Ok(Some(ScanRecord {
+                id: row.get(0)?,
+                filename: row.get(1)?,
+                filepath: row.get(2)?,
+                sha256: row.get(3)?,
+                timestamp: row.get(4)?,
+                risk_score: row.get(5)?,
+                verdict: row.get(6)?,
+                threat_name: row.get(7)?,
+                action_taken: row.get(8)?,
+                engine_results: row.get(9)?,
+                report_json: row.get(10)?,
+            }))
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn get_scan_history(&self, limit: u32) -> SqliteResult<Vec<ScanRecord>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, filename, filepath, sha256, timestamp, risk_score, verdict, threat_name, action_taken, engine_results
+            "SELECT id, filename, filepath, sha256, timestamp, risk_score, verdict, threat_name, action_taken, engine_results, report_json
              FROM scan_history ORDER BY timestamp DESC LIMIT ?1",
         )?;
         let rows = stmt.query_map(params![limit], |row| {
@@ -46,6 +84,7 @@ impl Database {
                 threat_name: row.get(7)?,
                 action_taken: row.get(8)?,
                 engine_results: row.get(9)?,
+                report_json: row.get(10)?,
             })
         })?;
         rows.collect()

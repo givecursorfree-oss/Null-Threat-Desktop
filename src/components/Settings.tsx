@@ -445,6 +445,31 @@ export default function Settings() {
           <CardTitle>Data &amp; Privacy</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="rounded-md border border-border/60 bg-secondary/40 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
+            <p className="font-medium text-foreground">Your data stays on this device</p>
+            <ul className="mt-2 list-inside list-disc space-y-1.5">
+              <li>
+                Scans run locally. Null Threat does not upload files, scan results, or usage
+                telemetry to our servers.
+              </li>
+              <li>
+                Optional updates (malware hash lists, ClamAV signatures) download public threat
+                feeds only when you click update in Settings. No personal data is sent.
+              </li>
+              <li>
+                Quarantine encryption keys are stored in your OS keychain (Windows Credential
+                Manager, macOS Keychain, Linux Secret Service) when available.
+              </li>
+              <li>
+                Local SQLite database{" "}
+                <span className="font-mono text-foreground">nullthreat.db</span> stores: scan
+                history (file paths, SHA-256, verdicts, engine scores), quarantine records,
+                watched folders, whitelist entries, and app settings. Nothing is synced to the
+                cloud.
+              </li>
+            </ul>
+          </div>
+
           <div className="flex items-center justify-between gap-4">
             <div>
               <h3 className="font-display text-sm font-semibold text-foreground">

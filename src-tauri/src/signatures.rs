@@ -12,6 +12,16 @@ use tauri::{AppHandle, Emitter};
 const LAST_UPDATED_KEY: &str = "signatures_last_updated";
 const UPDATE_INTERVAL_HOURS: i64 = 24;
 
+#[cfg(debug_assertions)]
+fn freshclam_missing_message() -> &'static str {
+    "freshclam not found — run the platform ClamAV setup script first"
+}
+
+#[cfg(not(debug_assertions))]
+fn freshclam_missing_message() -> &'static str {
+    "freshclam not found — restart the app or reinstall from the official installer"
+}
+
 static UPDATE_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug, Clone, Serialize)]
@@ -42,13 +52,8 @@ fn emit_update(app: &AppHandle, status: &str, message: &str, progress: u32) {
 }
 
 fn write_freshclam_config(runtime_dir: &Path, db_dir: &Path) -> PathBuf {
-    let conf_path = runtime_dir.join("freshclam.conf");
-    let content = format!(
-        "DatabaseDirectory {}\nDNSDatabaseInfo current.cvd.clamav.net\nDatabaseMirror database.clamav.net\n",
-        db_dir.display()
-    );
-    let _ = std::fs::write(&conf_path, content);
-    conf_path
+    crate::app_paths::ensure_freshclam_config(runtime_dir, db_dir);
+    runtime_dir.join("freshclam.conf")
 }
 
 fn resolve_freshclam(runtime_dir: &Path) -> Option<PathBuf> {
@@ -137,13 +142,9 @@ pub async fn run_signature_update(
             .map_err(|e| format!("Failed to create runtime dir: {e}"))?;
 
         let freshclam = resolve_freshclam(&runtime_dir).ok_or_else(|| {
-            emit_update(
-                &app,
-                "failed",
-                "freshclam not found — run the platform ClamAV setup script first",
-                0,
-            );
-            "freshclam not available".to_string()
+            let msg = freshclam_missing_message();
+            emit_update(&app, "failed", msg, 0);
+            msg.to_string()
         })?;
 
         let conf_path = write_freshclam_config(&runtime_dir, &db_dir);

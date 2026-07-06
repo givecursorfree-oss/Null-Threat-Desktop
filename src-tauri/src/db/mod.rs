@@ -22,6 +22,17 @@ impl Database {
         Ok(db)
     }
 
+    fn column_exists(conn: &Connection, table: &str, column: &str) -> SqliteResult<bool> {
+        let mut stmt = conn.prepare(&format!("PRAGMA table_info({table})"))?;
+        let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
+        for name in rows.flatten() {
+            if name == column {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
     fn run_migrations(&self) -> SqliteResult<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute_batch(
@@ -83,6 +94,14 @@ impl Database {
             );
             ",
         )?;
+
+        if !Self::column_exists(&conn, "scan_history", "report_json")? {
+            conn.execute(
+                "ALTER TABLE scan_history ADD COLUMN report_json TEXT",
+                [],
+            )?;
+        }
+
         Ok(())
     }
 }

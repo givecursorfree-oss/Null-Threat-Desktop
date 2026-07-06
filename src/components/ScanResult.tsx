@@ -8,6 +8,8 @@ import {
   ShieldAlert,
   CheckCircle,
   ChevronDown,
+  Download,
+  FileJson,
 } from "lucide-react";
 import ConfidenceMeter from "./ConfidenceMeter";
 import ThreatCard from "./ThreatCard";
@@ -16,6 +18,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { formatRiskScore } from "@/lib/riskScore";
+import { exportScanReportJson, exportScanReportPdf } from "../lib/api";
+import {
+  downloadBase64Pdf,
+  downloadTextFile,
+  scanReportBasename,
+} from "../lib/exportReport";
 import type { DeepAnalysisCheck, ScanResult as ScanResultType, ThreatInfo, Verdict } from "../types";
 
 interface ScanResultProps {
@@ -105,6 +113,40 @@ export default function ScanResult({
 }: ScanResultProps) {
   const deepHasFlags = result.deepChecks.some((c) => isDeepCheckFlagged(c.verdict));
   const [deepExpanded, setDeepExpanded] = useState(deepHasFlags);
+  const [exporting, setExporting] = useState<"json" | "pdf" | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const canExportReport = /^\d+$/.test(result.id);
+
+  const handleExportJson = async () => {
+    if (!canExportReport) return;
+    setExportError(null);
+    setExporting("json");
+    try {
+      const json = await exportScanReportJson(result.id);
+      const base = scanReportBasename(result.fileName, result.id);
+      downloadTextFile(json, `${base}.json`, "application/json");
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : "JSON export failed");
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!canExportReport) return;
+    setExportError(null);
+    setExporting("pdf");
+    try {
+      const pdfBase64 = await exportScanReportPdf(result.id);
+      const base = scanReportBasename(result.fileName, result.id);
+      downloadBase64Pdf(pdfBase64, `${base}.pdf`);
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : "PDF export failed");
+    } finally {
+      setExporting(null);
+    }
+  };
 
   const threatInfo: ThreatInfo | null =
     (result.verdict === "detected" ||
@@ -297,7 +339,29 @@ export default function ScanResult({
         />
       )}
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        {canExportReport && (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void handleExportJson()}
+              disabled={exporting !== null}
+            >
+              <FileJson className="h-4 w-4" />
+              {exporting === "json" ? "Exporting…" : "Export JSON"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void handleExportPdf()}
+              disabled={exporting !== null}
+            >
+              <Download className="h-4 w-4" />
+              {exporting === "pdf" ? "Exporting…" : "Export PDF"}
+            </Button>
+          </>
+        )}
         {result.verdict !== "clean" && onQuarantine && (
           <Button
             onClick={() => void onQuarantine()}
@@ -329,6 +393,9 @@ export default function ScanResult({
           </Button>
         )}
       </div>
+      {exportError && (
+        <p className="text-xs text-destructive">{exportError}</p>
+      )}
     </div>
   );
 }

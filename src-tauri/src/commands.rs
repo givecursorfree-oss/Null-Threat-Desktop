@@ -74,7 +74,8 @@ pub async fn scan_file(
     .await?;
 
     let engine_json = serde_json::to_string(&result.engine_results).unwrap_or_default();
-    state
+    let report_json = crate::report::stored_report_json(&result);
+    let scan_id = state
         .db
         .insert_scan_record(
             &result.filename,
@@ -85,9 +86,12 @@ pub async fn scan_file(
             result.threat_name.as_deref(),
             "manual_scan",
             &engine_json,
+            Some(&report_json),
         )
         .map_err(|e| format!("DB error: {e}"))?;
 
+    let mut result = result;
+    result.scan_id = Some(scan_id);
     Ok(result)
 }
 
@@ -131,7 +135,8 @@ pub async fn quarantine_file(
 #[tauri::command]
 pub async fn restore_file(id: u32, state: State<'_, AppState>) -> Result<String, String> {
     let db = state.db.clone();
-    tokio::task::spawn_blocking(move || quarantine::restore_file(&db, id as i64))
+    let app_data = state.app_data_dir.clone();
+    tokio::task::spawn_blocking(move || quarantine::restore_file(&app_data, &db, id as i64))
         .await
         .map_err(|e| format!("Task error: {e}"))?
 }
@@ -348,6 +353,34 @@ pub async fn get_whitelist(state: State<'_, AppState>) -> Result<Vec<WhitelistEn
 }
 
 // ── Utilities ────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn export_scan_report_json(
+    scan_id: u32,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    let record = state
+        .db
+        .get_scan_record(scan_id as i64)
+        .map_err(|e| format!("DB error: {e}"))?
+        .ok_or_else(|| format!("Scan record {scan_id} not found"))?;
+    crate::report::export_json(&record)
+}
+
+#[tauri::command]
+pub async fn export_scan_report_pdf(
+    scan_id: u32,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    use base64::Engine;
+    let record = state
+        .db
+        .get_scan_record(scan_id as i64)
+        .map_err(|e| format!("DB error: {e}"))?
+        .ok_or_else(|| format!("Scan record {scan_id} not found"))?;
+    let pdf = crate::report::export_pdf(&record)?;
+    Ok(base64::engine::general_purpose::STANDARD.encode(pdf))
+}
 
 #[tauri::command]
 pub async fn export_history_csv(state: State<'_, AppState>) -> Result<String, String> {
