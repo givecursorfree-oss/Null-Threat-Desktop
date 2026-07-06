@@ -11,6 +11,24 @@ env:
   CLAMAV_VERSION: "1.5.2"
 
 jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Run scanner unit tests
+        run: cd src-tauri && cargo test scanner::
+
+      - name: Typecheck frontend
+        run: npm ci && npm run build:vite
+
   build-linux:
     runs-on: ubuntu-24.04
     steps:
