@@ -105,6 +105,8 @@ fn main() {
             commands::export_history_csv,
             commands::export_scan_report_json,
             commands::export_scan_report_pdf,
+            commands::save_scan_report_json,
+            commands::save_scan_report_pdf,
             commands::clear_scan_history,
             commands::check_dependencies,
             commands::get_signature_status,

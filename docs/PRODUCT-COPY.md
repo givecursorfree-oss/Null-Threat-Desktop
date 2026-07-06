@@ -220,6 +220,7 @@ Setup script (dev): `scripts/setup-scanner-tools.ps1` (Windows) or `setup-scanne
 
 ## What NOT to claim
 
+- ❌ “100% offline forever” — scanning is offline; optional hash/ClamAV updates need network when user refreshes
 - ❌ “500,000+ hashes loaded” as a live guarantee — say MalwareBazaar + NSRL, updated when online
 - ❌ “100% confidence” — use risk score X/100
 - ❌ “Video steganography detection” — only image LSB; video LSB intentionally disabled
@@ -231,7 +232,9 @@ Setup script (dev): `scripts/setup-scanner-tools.ps1` (Windows) or `setup-scanne
 
 | Date | Feature |
 |------|---------|
-| 2026-07 | Multi-stage Deep Analysis: Identity, Structure, Metadata, Steganography |
+| 2026-07 | **v1.0** — GitHub Releases CI, SHA256SUMS, CONTRIBUTING.md, SECURITY.md, EICAR CI smoke test |
+| 2026-07 | Accurate offline copy: scan offline; optional signature/hash updates when online |
+| 2026-07 | Code signing pipeline (Windows Authenticode + Apple notarization when secrets configured) |
 | 2026-07 | Bundled ExifTool + ffmpeg alongside ClamAV, YARA, ffprobe |
 | 2026-07 | Expandable Deep Analysis breakdown in scan results |
 | 2026-07 | Smart risk scoring — heuristics cap at 48/100 without signature hit |
@@ -245,7 +248,7 @@ Setup script (dev): `scripts/setup-scanner-tools.ps1` (Windows) or `setup-scanne
 ## README one-paragraph intro
 
 ```
-Null Threat is a free, open-source desktop security scanner built with Rust (Tauri 2) and React + TypeScript. It analyzes files using four local detection engines — SHA-256 hash lookup, ClamAV, YARA rules, and multi-stage deep analysis — entirely on your machine. Deep analysis covers file identity, container structure, metadata tags, and image steganalysis. ClamAV, YARA, ffprobe, ffmpeg, and ExifTool are bundled in release builds. No telemetry, no cloud uploads, no subscriptions. Licensed under GPL v3.
+Null Threat is a free, open-source desktop security scanner built with Rust (Tauri 2) and React + TypeScript. It analyzes files using four local detection engines — SHA-256 hash lookup, ClamAV, YARA rules, and multi-stage deep analysis — entirely on your machine. Deep analysis covers file identity, container structure, metadata tags, and image steganalysis. ClamAV, YARA, ffprobe, ffmpeg, and ExifTool are bundled in release builds. Scanning runs offline with no cloud upload; optional hash and ClamAV updates use the network only when you choose to refresh. No telemetry, no subscriptions. Licensed under GPL v3.
 ```
 
 ---

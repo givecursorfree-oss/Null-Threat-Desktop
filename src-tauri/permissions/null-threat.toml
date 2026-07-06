@@ -24,6 +24,8 @@ commands.allow = [
   "export_history_csv",
   "export_scan_report_json",
   "export_scan_report_pdf",
+  "save_scan_report_json",
+  "save_scan_report_pdf",
   "clear_scan_history",
   "check_dependencies",
   "get_signature_status",

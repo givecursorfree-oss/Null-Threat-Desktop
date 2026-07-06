@@ -18,12 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { formatRiskScore } from "@/lib/riskScore";
-import { exportScanReportJson, exportScanReportPdf } from "../lib/api";
-import {
-  downloadBase64Pdf,
-  downloadTextFile,
-  scanReportBasename,
-} from "../lib/exportReport";
+import { saveScanReportJson, saveScanReportPdf } from "../lib/api";
+import { formatSaveSuccess, isSaveCancelledError } from "../lib/exportReport";
 import type { DeepAnalysisCheck, ScanResult as ScanResultType, ThreatInfo, Verdict } from "../types";
 
 interface ScanResultProps {
@@ -115,19 +111,23 @@ export default function ScanResult({
   const [deepExpanded, setDeepExpanded] = useState(deepHasFlags);
   const [exporting, setExporting] = useState<"json" | "pdf" | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [exportSuccess, setExportSuccess] = useState<string | null>(null);
 
   const canExportReport = /^\d+$/.test(result.id);
 
   const handleExportJson = async () => {
     if (!canExportReport) return;
     setExportError(null);
+    setExportSuccess(null);
     setExporting("json");
     try {
-      const json = await exportScanReportJson(result.id);
-      const base = scanReportBasename(result.fileName, result.id);
-      downloadTextFile(json, `${base}.json`, "application/json");
+      const path = await saveScanReportJson(result.id);
+      setExportSuccess(formatSaveSuccess(path));
     } catch (e) {
-      setExportError(e instanceof Error ? e.message : "JSON export failed");
+      const message = e instanceof Error ? e.message : "JSON export failed";
+      if (!isSaveCancelledError(message)) {
+        setExportError(message);
+      }
     } finally {
       setExporting(null);
     }
@@ -136,13 +136,16 @@ export default function ScanResult({
   const handleExportPdf = async () => {
     if (!canExportReport) return;
     setExportError(null);
+    setExportSuccess(null);
     setExporting("pdf");
     try {
-      const pdfBase64 = await exportScanReportPdf(result.id);
-      const base = scanReportBasename(result.fileName, result.id);
-      downloadBase64Pdf(pdfBase64, `${base}.pdf`);
+      const path = await saveScanReportPdf(result.id);
+      setExportSuccess(formatSaveSuccess(path));
     } catch (e) {
-      setExportError(e instanceof Error ? e.message : "PDF export failed");
+      const message = e instanceof Error ? e.message : "PDF export failed";
+      if (!isSaveCancelledError(message)) {
+        setExportError(message);
+      }
     } finally {
       setExporting(null);
     }
@@ -393,6 +396,9 @@ export default function ScanResult({
           </Button>
         )}
       </div>
+      {exportSuccess && (
+        <p className="text-xs text-emerald-400/90">{exportSuccess}</p>
+      )}
       {exportError && (
         <p className="text-xs text-destructive">{exportError}</p>
       )}

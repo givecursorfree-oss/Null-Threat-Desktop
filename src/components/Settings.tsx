@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { FolderPlus, Trash2, Download, Eye, EyeOff, AlertCircle, RefreshCw, DatabaseZap } from "lucide-react";
+import packageJson from "../../package.json";
 import {
   exportHistoryCsv,
   clearScanHistory,
@@ -279,8 +280,9 @@ export default function Settings() {
               MalwareBazaar Hash Intelligence
             </h3>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Null Threat works fully offline. When you are online, refresh known-malware SHA256
-              hashes daily for better detection. Internet is only needed for this step.
+              Null Threat scans offline with bundled ClamAV definitions. When you are online,
+              refresh known-malware SHA256 hashes for broader detection. Internet is only used
+              for this optional step.
             </p>
             {hashIntelStatus && (
               <p className="mt-2 text-xs text-muted-foreground">
@@ -449,12 +451,13 @@ export default function Settings() {
             <p className="font-medium text-foreground">Your data stays on this device</p>
             <ul className="mt-2 list-inside list-disc space-y-1.5">
               <li>
-                Scans run locally. Null Threat does not upload files, scan results, or usage
-                telemetry to our servers.
+                <strong>Scanning is fully offline.</strong> Files and results never leave this device.
+                No usage telemetry is collected. Optional MalwareBazaar hash and ClamAV signature
+                updates download public threat feeds only when you click update in Settings.
               </li>
               <li>
-                Optional updates (malware hash lists, ClamAV signatures) download public threat
-                feeds only when you click update in Settings. No personal data is sent.
+                Release builds include bundled ClamAV definitions for day-one offline scanning.
+                Refresh definitions manually when online for newer coverage.
               </li>
               <li>
                 Quarantine encryption keys are stored in your OS keychain (Windows Credential
@@ -557,6 +560,29 @@ export default function Settings() {
           </Card>
         </div>
       )}
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle>About</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-xs text-muted-foreground">
+          <p>
+            <span className="font-medium text-foreground">Null Threat</span> v
+            {packageJson.version} — local desktop security scanner (GPL v3).
+          </p>
+          <p>
+            Releases and SHA256 checksums:{" "}
+            <a
+              href="https://github.com/givecursorfree-oss/Null-Threat-Desktop/releases"
+              className="text-primary underline-offset-2 hover:underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              GitHub Releases
+            </a>
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

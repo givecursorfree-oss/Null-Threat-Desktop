@@ -1,6 +1,6 @@
 [package]
 name = "null-threat"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 description = "Null Threat – Desktop Security Scanner"
 

@@ -354,16 +354,66 @@ pub async fn get_whitelist(state: State<'_, AppState>) -> Result<Vec<WhitelistEn
 
 // ── Utilities ────────────────────────────────────────────────────
 
+const SAVE_CANCELLED: &str = "SAVE_CANCELLED";
+
+fn default_report_filename(record: &ScanRecord, ext: &str) -> String {
+    let safe: String = record
+        .filename
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .take(48)
+        .collect();
+    let safe = if safe.is_empty() { "scan".to_string() } else { safe };
+    format!("null-threat-{safe}-{}.{}", record.id, ext)
+}
+
+async fn pick_save_path(
+    app: &tauri::AppHandle,
+    title: &str,
+    default_name: &str,
+    filter_name: &str,
+    ext: &str,
+) -> Result<String, String> {
+    let app = app.clone();
+    let title = title.to_string();
+    let default_name = default_name.to_string();
+    let filter_name = filter_name.to_string();
+    let ext = ext.to_string();
+
+    tokio::task::spawn_blocking(move || {
+        app.dialog()
+            .file()
+            .set_title(&title)
+            .set_file_name(&default_name)
+            .add_filter(&filter_name, &[ext.as_str()])
+            .blocking_save_file()
+    })
+    .await
+    .map_err(|e| format!("Dialog error: {e}"))?
+    .map(|p| p.to_string())
+    .ok_or_else(|| SAVE_CANCELLED.to_string())
+}
+
+fn load_scan_record(state: &AppState, scan_id: u32) -> Result<ScanRecord, String> {
+    state
+        .db
+        .get_scan_record(scan_id as i64)
+        .map_err(|e| format!("DB error: {e}"))?
+        .ok_or_else(|| format!("Scan record {scan_id} not found"))
+}
+
 #[tauri::command]
 pub async fn export_scan_report_json(
     scan_id: u32,
     state: State<'_, AppState>,
 ) -> Result<String, String> {
-    let record = state
-        .db
-        .get_scan_record(scan_id as i64)
-        .map_err(|e| format!("DB error: {e}"))?
-        .ok_or_else(|| format!("Scan record {scan_id} not found"))?;
+    let record = load_scan_record(&state, scan_id)?;
     crate::report::export_json(&record)
 }
 
@@ -373,13 +423,37 @@ pub async fn export_scan_report_pdf(
     state: State<'_, AppState>,
 ) -> Result<String, String> {
     use base64::Engine;
-    let record = state
-        .db
-        .get_scan_record(scan_id as i64)
-        .map_err(|e| format!("DB error: {e}"))?
-        .ok_or_else(|| format!("Scan record {scan_id} not found"))?;
+    let record = load_scan_record(&state, scan_id)?;
     let pdf = crate::report::export_pdf(&record)?;
     Ok(base64::engine::general_purpose::STANDARD.encode(pdf))
+}
+
+#[tauri::command]
+pub async fn save_scan_report_json(
+    scan_id: u32,
+    state: State<'_, AppState>,
+    app: tauri::AppHandle,
+) -> Result<String, String> {
+    let record = load_scan_record(&state, scan_id)?;
+    let json = crate::report::export_json(&record)?;
+    let default_name = default_report_filename(&record, "json");
+    let path = pick_save_path(&app, "Save JSON report", &default_name, "JSON", "json").await?;
+    std::fs::write(&path, json).map_err(|e| format!("Write failed: {e}"))?;
+    Ok(path)
+}
+
+#[tauri::command]
+pub async fn save_scan_report_pdf(
+    scan_id: u32,
+    state: State<'_, AppState>,
+    app: tauri::AppHandle,
+) -> Result<String, String> {
+    let record = load_scan_record(&state, scan_id)?;
+    let pdf = crate::report::export_pdf(&record)?;
+    let default_name = default_report_filename(&record, "pdf");
+    let path = pick_save_path(&app, "Save PDF report", &default_name, "PDF", "pdf").await?;
+    std::fs::write(&path, pdf).map_err(|e| format!("Write failed: {e}"))?;
+    Ok(path)
 }
 
 #[tauri::command]

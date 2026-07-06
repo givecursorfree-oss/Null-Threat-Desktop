@@ -584,6 +584,16 @@ export async function exportScanReportPdf(scanId: string): Promise<string> {
   return invoke<string>("export_scan_report_pdf", { scanId: Number(scanId) });
 }
 
+/** Opens a native save dialog and writes the JSON report to disk (Tauri desktop). */
+export async function saveScanReportJson(scanId: string): Promise<string> {
+  return invoke<string>("save_scan_report_json", { scanId: Number(scanId) });
+}
+
+/** Opens a native save dialog and writes the PDF report to disk (Tauri desktop). */
+export async function saveScanReportPdf(scanId: string): Promise<string> {
+  return invoke<string>("save_scan_report_pdf", { scanId: Number(scanId) });
+}
+
 export async function clearScanHistory(): Promise<number> {
   return invoke<number>("clear_scan_history");
 }

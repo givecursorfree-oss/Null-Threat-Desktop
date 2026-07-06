@@ -75,6 +75,27 @@ npm run build
 
 Linux `.deb` and AppImage artifacts are not code-signed in this pipeline. Distribute checksums (SHA-256) with releases.
 
+## User-facing warnings
+
+Unsigned community builds are normal until maintainers add CI signing secrets.
+
+| Platform | What users see | What to do |
+|----------|----------------|------------|
+| Windows | SmartScreen "Unknown publisher" | Verify `SHA256SUMS.txt` from [Releases](https://github.com/givecursorfree-oss/Null-Threat-Desktop/releases), then **More info → Run anyway** |
+| macOS | Gatekeeper "cannot be opened" | Verify checksum, then **right-click → Open** once, or `xattr -dr com.apple.quarantine "/Applications/Null Threat.app"` |
+| Linux | No code signing | Verify `sha256sum -c SHA256SUMS.txt` |
+
+Signed releases (when secrets are configured) show the publisher name and pass SmartScreen / Gatekeeper without extra steps.
+
+## Automated releases
+
+Pushing a tag `v*` (e.g. `v1.0.0`) runs `.github/workflows/build.yml`, uploads installers, generates `SHA256SUMS.txt`, and creates a GitHub Release.
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
 ## Verifying a signed build
 
 **Windows**

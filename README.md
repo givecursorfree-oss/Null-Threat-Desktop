@@ -29,7 +29,9 @@
 
 ---
 
-Null Threat is a free, open-source desktop security scanner built with **Rust (Tauri 2)** and **React + TypeScript**. It analyzes files using four local detection engines — SHA-256 hash lookup, ClamAV, YARA rules, and **multi-stage deep analysis** — entirely on your machine. Deep analysis covers **file identity**, **container structure**, **metadata tags**, and **image steganalysis**. **ClamAV, YARA, ffprobe, ffmpeg, and ExifTool** are bundled in release builds. No internet required after setup, no telemetry, no cloud uploads, and no subscriptions. Licensed under **GPL v3**.
+Null Threat is a free, open-source desktop security scanner built with **Rust (Tauri 2)** and **React + TypeScript**. It analyzes files using four local detection engines — SHA-256 hash lookup, ClamAV, YARA rules, and **multi-stage deep analysis** — entirely on your machine. Deep analysis covers **file identity**, **container structure**, **metadata tags**, and **image steganalysis**. **ClamAV, YARA, ffprobe, ffmpeg, and ExifTool** are bundled in release builds.
+
+**Offline scanning:** every scan runs locally with no cloud upload of files or results. **Optional updates** (MalwareBazaar hashes, ClamAV virus definitions) use the network only when you click update in Settings. Release installers include bundled ClamAV definitions for day-one offline use. No telemetry, no subscriptions. Licensed under **GPL v3**.
 
 > **Edit marketing copy:** See [docs/PRODUCT-COPY.md](docs/PRODUCT-COPY.md) for hero page text, feature bullets, and changelog.
 
@@ -66,6 +68,10 @@ Null Threat is a free, open-source desktop security scanner built with **Rust (T
 ---
 
 ## Installation
+
+Download the latest release from [GitHub Releases](https://github.com/givecursorfree-oss/Null-Threat-Desktop/releases). Each release includes `SHA256SUMS.txt` — verify before install (see [SECURITY.md](SECURITY.md)).
+
+> **Unsigned installers:** Community CI builds may show Windows SmartScreen or macOS Gatekeeper warnings until Authenticode / Apple notarization secrets are configured. Verify the checksum, then proceed per [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md#user-facing-warnings).
 
 ### Windows
 
@@ -174,7 +180,7 @@ Production binaries are output to `src-tauri/target/release/`. Platform installe
 
 ## Signature Updates
 
-Null Threat maintains a local SQLite database of malware hash signatures sourced from **MalwareBazaar** and **NSRL**.
+Null Threat maintains a local SQLite database of malware hash signatures sourced from **MalwareBazaar** and **NSRL**. **Scanning does not need the network.** Updates are optional and user-initiated.
 
 ### Automatic Updates (Online)
 
@@ -192,7 +198,7 @@ The app downloads the latest MalwareBazaar CSV, parses entries, and upserts them
 3. Open **Settings → Signature Updates → Import CSV**.
 4. Select the CSV file. Null Threat validates and imports entries.
 
-> **Note:** ClamAV virus definitions require separate updates via `freshclam` or the bundled definition copy on first run.
+> **Note:** ClamAV virus definitions ship bundled in release builds. Optional online updates refresh definitions when you click **Update signatures** in Settings — not required for offline scanning with the bundled set.
 
 ---
 

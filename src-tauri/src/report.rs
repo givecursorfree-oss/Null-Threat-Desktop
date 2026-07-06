@@ -99,6 +99,17 @@ pub fn export_json(record: &ScanRecord) -> Result<String, String> {
     serde_json::to_string_pretty(&report).map_err(|e| format!("JSON export failed: {e}"))
 }
 
+fn pdf_safe_text(text: &str) -> String {
+    text.chars()
+        .map(|c| match c {
+            '\u{2014}' | '\u{2013}' => '-',
+            '\u{2022}' => '*',
+            c if c.is_ascii() => c,
+            _ => '?',
+        })
+        .collect()
+}
+
 fn write_line(
     layer: &PdfLayerReference,
     font: &printpdf::IndirectFontRef,
@@ -106,7 +117,8 @@ fn write_line(
     size: f32,
     text: &str,
 ) {
-    layer.use_text(text, size, Mm(18.0), Mm(*y), font);
+    let safe = pdf_safe_text(text);
+    layer.use_text(&safe, size, Mm(18.0), Mm(*y), font);
     *y -= 6.5;
 }
 
@@ -124,7 +136,7 @@ pub fn export_pdf(record: &ScanRecord) -> Result<Vec<u8>, String> {
 
     let mut y = 280.0_f32;
 
-    write_line(&layer, &font_bold, &mut y, 16.0, "Null Threat — Scan Report");
+    write_line(&layer, &font_bold, &mut y, 16.0, "Null Threat - Scan Report");
     write_line(&layer, &font, &mut y, 9.0, &format!("Report version: {}", REPORT_VERSION));
     write_line(&layer, &font, &mut y, 9.0, &format!("Generated: {}", report.generated_at));
     y -= 4.0;
@@ -208,7 +220,7 @@ pub fn export_pdf(record: &ScanRecord) -> Result<Vec<u8>, String> {
                 &font,
                 &mut y,
                 8.5,
-                &truncate_line(&format!("• {finding}"), 92),
+                &truncate_line(&format!("* {finding}"), 92),
             );
         }
         y -= 4.0;
@@ -298,4 +310,46 @@ fn save_pdf(doc: PdfDocumentReference) -> Result<Vec<u8>, String> {
             .map_err(|e| format!("PDF save failed: {e}"))?;
     }
     Ok(buffer)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::models::ScanRecord;
+
+    fn sample_record() -> ScanRecord {
+        ScanRecord {
+            id: 1,
+            filename: "test.exe".into(),
+            filepath: r"C:\Users\test\file.exe".into(),
+            sha256: "abc".repeat(8),
+            timestamp: "2026-07-06T12:00:00Z".into(),
+            risk_score: 12,
+            verdict: "clean".into(),
+            threat_name: None,
+            action_taken: "manual_scan".into(),
+            engine_results: r#"{"hash_score":0,"clam_score":0,"yara_score":0,"magic_score":0,"entropy_score":0,"video_score":0,"structure_score":0,"metadata_score":0,"steg_score":0}"#.into(),
+            report_json: None,
+        }
+    }
+
+    #[test]
+    fn export_json_roundtrip() {
+        let json = export_json(&sample_record()).expect("json export");
+        assert!(json.contains("\"report_version\""));
+        assert!(json.contains("test.exe"));
+    }
+
+    #[test]
+    fn export_pdf_non_empty() {
+        let pdf = export_pdf(&sample_record()).expect("pdf export");
+        assert!(pdf.starts_with(b"%PDF"));
+        assert!(pdf.len() > 200);
+    }
+
+    #[test]
+    fn pdf_safe_text_strips_non_ascii() {
+        assert_eq!(pdf_safe_text("caf\u{e9}"), "caf?");
+        assert_eq!(pdf_safe_text("a\u{2014}b"), "a-b");
+    }
 }

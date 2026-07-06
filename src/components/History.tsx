@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Search, Download, ChevronLeft, ChevronRight, FileJson } from "lucide-react";
-import { fetchScanHistory, exportScanReportJson, exportScanReportPdf } from "../lib/api";
-import { downloadBase64Pdf, downloadTextFile, scanReportBasename } from "../lib/exportReport";
+import { fetchScanHistory, saveScanReportJson, saveScanReportPdf } from "../lib/api";
+import { formatSaveSuccess, isSaveCancelledError } from "../lib/exportReport";
 import VerdictBadge from "./VerdictBadge";
 import PageHeader from "./PageHeader";
 import { Button } from "@/components/ui/button";
@@ -22,24 +22,38 @@ export default function History() {
   const [page, setPage] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [exportingId, setExportingId] = useState<string | null>(null);
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const handleExportJson = async (entry: ScanHistoryEntry) => {
-    setExportingId(entry.id);
+    setExportingId(`${entry.id}-json`);
+    setExportError(null);
+    setExportMessage(null);
     try {
-      const json = await exportScanReportJson(entry.id);
-      const base = scanReportBasename(entry.fileName, entry.id);
-      downloadTextFile(json, `${base}.json`, "application/json");
+      const path = await saveScanReportJson(entry.id);
+      setExportMessage(formatSaveSuccess(path));
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "JSON export failed";
+      if (!isSaveCancelledError(message)) {
+        setExportError(message);
+      }
     } finally {
       setExportingId(null);
     }
   };
 
   const handleExportPdf = async (entry: ScanHistoryEntry) => {
-    setExportingId(entry.id);
+    setExportingId(`${entry.id}-pdf`);
+    setExportError(null);
+    setExportMessage(null);
     try {
-      const pdf = await exportScanReportPdf(entry.id);
-      const base = scanReportBasename(entry.fileName, entry.id);
-      downloadBase64Pdf(pdf, `${base}.pdf`);
+      const path = await saveScanReportPdf(entry.id);
+      setExportMessage(formatSaveSuccess(path));
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "PDF export failed";
+      if (!isSaveCancelledError(message)) {
+        setExportError(message);
+      }
     } finally {
       setExportingId(null);
     }
@@ -95,6 +109,11 @@ export default function History() {
           </Button>
         }
       />
+
+      {exportMessage && (
+        <p className="text-xs text-emerald-400/90">{exportMessage}</p>
+      )}
+      {exportError && <p className="text-xs text-destructive">{exportError}</p>}
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative min-w-0 flex-1">
@@ -195,7 +214,7 @@ export default function History() {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    disabled={exportingId === entry.id}
+                    disabled={exportingId === `${entry.id}-json`}
                     onClick={() => void handleExportJson(entry)}
                     aria-label="Export JSON report"
                   >
@@ -206,7 +225,7 @@ export default function History() {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    disabled={exportingId === entry.id}
+                    disabled={exportingId === `${entry.id}-pdf`}
                     onClick={() => void handleExportPdf(entry)}
                     aria-label="Export PDF report"
                   >
