@@ -17,22 +17,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Linux build dependencies for tests
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
-            patchelf build-essential libssl-dev libsecret-1-dev
-
-      - uses: dtolnay/rust-toolchain@stable
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-
-      - name: Run scanner unit tests
-        run: cd src-tauri && cargo test 'scanner::'
 
       - name: Typecheck frontend
         run: npm ci && npm run build:vite
@@ -75,6 +63,9 @@ jobs:
           fi
           ls -la src-tauri/resources/clamav/
           rm -f src-tauri/binaries/linux/freshclam.conf 2>/dev/null || true
+
+      - name: Run scanner unit tests
+        run: cd src-tauri && cargo test --lib 'scanner::'
 
       - name: Build Linux app
         run: |
