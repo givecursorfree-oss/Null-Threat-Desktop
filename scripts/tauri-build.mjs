@@ -16,15 +16,25 @@ const projectRoot = path.resolve(
   ".."
 );
 
-const rustflags = [
-  remapFlag(os.homedir()),
-  remapFlag(projectRoot),
-  "--remap-path-prefix=/home/runner/work=.",
-  "--remap-path-prefix=/Users/=.",
-  process.env.RUSTFLAGS,
-].filter(Boolean);
+function buildRemapFlags() {
+  const flags = [];
 
-// CARGO_ENCODED_RUSTFLAGS avoids Windows shell splitting on spaces in paths.
+  if (process.env.GITHUB_ACTIONS) {
+    // CI: remap the runner home + workflow checkout only. Never remap all of /Users/.
+    if (process.env.RUSTFLAGS) {
+      flags.push(process.env.RUSTFLAGS);
+    }
+    flags.push(remapFlag(os.homedir()));
+    return flags;
+  }
+
+  flags.push(remapFlag(os.homedir()));
+  flags.push(remapFlag(projectRoot));
+  flags.push("--remap-path-prefix=/home/runner/work=.");
+  return flags;
+}
+
+const rustflags = buildRemapFlags().filter(Boolean);
 const encodedRustflags = rustflags.join("\x1f");
 
 const { RUSTFLAGS: _drop, ...baseEnv } = process.env;
